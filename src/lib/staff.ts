@@ -5,10 +5,14 @@
 export type StaffRole = 'admin' | 'scanner' | 'staff';
 
 function getEnv(name: string): string | undefined {
+  // On Vercel, process.env is the runtime source of truth
+  if (typeof process !== 'undefined' && process.env[name]) {
+    return process.env[name];
+  }
   if (typeof import.meta !== 'undefined' && import.meta.env) {
     return (import.meta.env as Record<string, string | undefined>)[name];
   }
-  return typeof process !== 'undefined' ? process.env[name] : undefined;
+  return undefined;
 }
 
 function parseList(value: string | undefined): string[] {

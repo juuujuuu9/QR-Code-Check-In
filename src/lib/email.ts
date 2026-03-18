@@ -3,7 +3,10 @@ import { Resend } from 'resend';
 let resend: Resend | null = null;
 function getResend() {
   if (!resend) {
-    const apiKey = import.meta.env.RESEND_API_KEY ?? process.env.RESEND_API_KEY ?? '';
+    // On Vercel, process.env is the runtime source of truth
+    const apiKey = (typeof process !== 'undefined' && process.env.RESEND_API_KEY)
+      || (typeof import.meta !== 'undefined' && import.meta.env.RESEND_API_KEY)
+      || '';
     resend = new Resend(apiKey || 're_placeholder');
   }
   return resend;
@@ -29,13 +32,20 @@ export async function sendQRCodeEmail(
   qrCodeBase64: string,
   overrides?: { fromName?: string; eventName?: string }
 ) {
-  const apiKey = import.meta.env.RESEND_API_KEY ?? process.env.RESEND_API_KEY;
+  // On Vercel, process.env is the runtime source of truth
+  const apiKey = (typeof process !== 'undefined' && process.env.RESEND_API_KEY)
+    || (typeof import.meta !== 'undefined' && import.meta.env.RESEND_API_KEY);
   if (!apiKey) {
     return { success: false as const, error: 'Email service not configured' };
   }
-  const fromEmail = import.meta.env.FROM_EMAIL ?? process.env.FROM_EMAIL ?? 'onboarding@resend.dev';
+  const fromEmail = (typeof process !== 'undefined' && process.env.FROM_EMAIL)
+    || (typeof import.meta !== 'undefined' && import.meta.env.FROM_EMAIL)
+    || 'onboarding@resend.dev';
   const fromName =
-    overrides?.fromName ?? import.meta.env.FROM_NAME ?? process.env.FROM_NAME ?? 'Event Check-In';
+    overrides?.fromName
+    ?? (typeof process !== 'undefined' && process.env.FROM_NAME)
+    ?? (typeof import.meta !== 'undefined' && import.meta.env.FROM_NAME)
+    ?? 'Event Check-In';
   const eventName = overrides?.eventName ?? 'the event';
   const from = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
 

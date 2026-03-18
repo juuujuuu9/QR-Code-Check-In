@@ -15,9 +15,10 @@ import { updateAttendeeQRToken } from '../../../lib/db';
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24h default for webhook-created QRs
 
 function getWebhookKey(): string {
+  // On Vercel, process.env is the runtime source of truth
   return (
-    (typeof import.meta !== 'undefined' && (import.meta.env?.MICROSITE_WEBHOOK_KEY as string)) ||
     (typeof process !== 'undefined' && process.env?.MICROSITE_WEBHOOK_KEY) ||
+    (typeof import.meta !== 'undefined' && (import.meta.env?.MICROSITE_WEBHOOK_KEY as string)) ||
     ''
   );
 }
@@ -107,9 +108,10 @@ export const POST: APIRoute = async ({ request }) => {
           qrPayload = encodeQR(event.id, existing.id, existing.qr_token);
         }
 
+        // On Vercel, process.env is the runtime source of truth
         const baseUrl =
-          (typeof import.meta !== 'undefined' && (import.meta.env?.PUBLIC_APP_URL as string)) ||
           (typeof process !== 'undefined' && process.env?.PUBLIC_APP_URL) ||
+          (typeof import.meta !== 'undefined' && (import.meta.env?.PUBLIC_APP_URL as string)) ||
           '';
         return new Response(
           JSON.stringify({
@@ -159,9 +161,10 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
+    // On Vercel, process.env is the runtime source of truth
     const baseUrl =
-      (typeof import.meta !== 'undefined' && (import.meta.env?.PUBLIC_APP_URL as string)) ||
       (typeof process !== 'undefined' && process.env?.PUBLIC_APP_URL) ||
+      (typeof import.meta !== 'undefined' && (import.meta.env?.PUBLIC_APP_URL as string)) ||
       '';
     return new Response(
       JSON.stringify({

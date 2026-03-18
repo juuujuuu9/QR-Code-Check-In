@@ -5,8 +5,10 @@ import { sendQRCodeEmail } from '../../lib/email';
 const RESEND_LINK = 'https://resend.com/api-keys';
 
 export const GET: APIRoute = () => {
+  // On Vercel, process.env is the runtime source of truth
   const configured = Boolean(
-    import.meta.env.RESEND_API_KEY ?? (typeof process !== 'undefined' ? process.env.RESEND_API_KEY : undefined)
+    (typeof process !== 'undefined' && process.env.RESEND_API_KEY)
+    || (typeof import.meta !== 'undefined' && import.meta.env.RESEND_API_KEY)
   );
   return new Response(
     JSON.stringify({ configured, link: RESEND_LINK }),

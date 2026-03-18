@@ -4,7 +4,11 @@ let sql: ReturnType<typeof neon> | null = null;
 
 function getDb() {
   if (!sql) {
-    const url = import.meta.env.DATABASE_URL ?? (typeof process !== 'undefined' ? process.env.DATABASE_URL : undefined);
+    // On Vercel, process.env is the only way to access runtime env vars.
+    // import.meta.env is a Vite build-time replacement and won't work for secrets.
+    const url = typeof process !== 'undefined' && process.env.DATABASE_URL
+      ? process.env.DATABASE_URL
+      : (typeof import.meta !== 'undefined' && import.meta.env?.DATABASE_URL);
     if (!url || url === 'placeholder') throw new Error('DATABASE_URL is not set');
     sql = neon(url);
   }
@@ -79,9 +83,10 @@ export async function getDefaultEventId(): Promise<string> {
   if (defaultEventIdCache && defaultEventIdCache.expiresAt > now) {
     return defaultEventIdCache.id;
   }
+  // On Vercel, process.env is the runtime source of truth for env vars
   const slug =
-    (typeof import.meta !== 'undefined' && import.meta.env?.DEFAULT_EVENT_SLUG) ||
     (typeof process !== 'undefined' && process.env?.DEFAULT_EVENT_SLUG) ||
+    (typeof import.meta !== 'undefined' && import.meta.env?.DEFAULT_EVENT_SLUG) ||
     'default';
   const event = await getEventBySlug(slug);
   if (!event) throw new Error('Default event not found. Run npm run migrate-events.');
