@@ -45,7 +45,7 @@ export const POST: APIRoute = async ({ request }) => {
       await Promise.all(
         batch.map(async (attendee) => {
           try {
-            await getOrCreateQRPayload(attendee.id, eventId || attendee.eventId);
+            await getOrCreateQRPayload(attendee.id, eventId || attendee.eventId || undefined);
             results.refreshed++;
           } catch (err) {
             results.failed++;

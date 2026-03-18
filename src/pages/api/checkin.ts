@@ -211,7 +211,7 @@ export const POST: APIRoute = async ({ request }) => {
       eventId,
       entryId,
       token,
-      scannerDeviceId
+      scannerDeviceId ?? null
     );
     logCheckInAttempt({ ip, outcome: 'success', attendeeId: updated.id, eventId });
     return new Response(

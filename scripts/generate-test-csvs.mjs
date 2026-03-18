@@ -100,8 +100,8 @@ esaped@example.com,"Bob ""The Builder""",Smith,Build Inc`,
   {
     name: 'bom-utf8',
     description: 'CSV with UTF-8 BOM (Byte Order Mark)',
-    content: '\uFEFFemail,first_name,last_name
-bom@example.com,BOM,Test',
+    content: `\uFEFFemail,first_name,last_name
+bom@example.com,BOM,Test`,
   },
   {
     name: 'windows-line-endings',

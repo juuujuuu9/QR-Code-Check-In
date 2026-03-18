@@ -36,7 +36,7 @@ function isNetworkError(err: unknown): boolean {
 /** Map OfflineCheckInResult to CheckInResult for UI consistency */
 function toCheckInResult(
   r:
-    | { success: true; attendee: { id: string; firstName: string; lastName: string; email: string; company?: string }; event?: { id: string; name: string }; message: string }
+    | { success: true; alreadyCheckedIn?: boolean; attendee: { id: string; firstName: string; lastName: string; email: string; company?: string }; event?: { id: string; name: string }; message: string }
     | { success: false; alreadyCheckedIn?: boolean; attendee?: { id: string; firstName: string; lastName: string; email: string; company?: string }; event?: { id: string; name: string }; message: string }
 ): CheckInResult {
   return {
@@ -231,7 +231,7 @@ export function CheckInScanner({ onCheckIn, standalone = false, eventId }: Check
     const scanner = html5QrCodeRef.current;
     if (!scanner || !torchSupported) return;
     try {
-      const torch = scanner.getRunningTrackCameraCapabilities().torchFeature();
+      const torch = (scanner as any).getRunningTrackCameraCapabilities().torchFeature();
       const next = !torchOn;
       await torch.apply(next);
       setTorchOn(torch.value() ?? next);

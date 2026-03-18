@@ -25,8 +25,8 @@ export async function sendQRCodeEmail(
     firstName: string;
     lastName: string;
     email: string;
-    company?: string;
-    dietaryRestrictions?: string;
+    company?: string | null;
+    dietaryRestrictions?: string | null;
     rsvpAt: string;
   },
   qrCodeBase64: string,

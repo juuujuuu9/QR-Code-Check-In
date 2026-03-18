@@ -1,6 +1,9 @@
 import { neon } from '@neondatabase/serverless';
 
-let sql: ReturnType<typeof neon> | null = null;
+type SqlRow = Record<string, unknown>;
+type NeonSql = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<SqlRow[]>;
+
+let sql: NeonSql | null = null;
 
 function getDb() {
   if (!sql) {
@@ -10,7 +13,7 @@ function getDb() {
       ? process.env.DATABASE_URL
       : (typeof import.meta !== 'undefined' && import.meta.env?.DATABASE_URL);
     if (!url || url === 'placeholder') throw new Error('DATABASE_URL is not set');
-    sql = neon(url);
+    sql = neon(url) as unknown as NeonSql;
   }
   return sql;
 }
@@ -38,25 +41,25 @@ function rowToEvent(row: Record<string, unknown>): EventRow {
   };
 }
 
-function rowToAttendee(row: Record<string, unknown>) {
+function rowToAttendee(row: SqlRow) {
   return {
-    id: row.id,
-    firstName: row.first_name,
-    lastName: row.last_name,
-    email: row.email,
-    phone: row.phone,
-    company: row.company,
-    dietaryRestrictions: row.dietary_restrictions,
-    checkedIn: row.checked_in,
-    checkedInAt: row.checked_in_at,
-    rsvpAt: row.rsvp_at,
-    qrExpiresAt: row.qr_expires_at,
-    qrUsedAt: row.qr_used_at,
-    qrUsedByDevice: row.qr_used_by_device,
-    eventId: row.event_id,
-    micrositeEntryId: row.microsite_entry_id,
+    id: row.id as string,
+    firstName: row.first_name as string,
+    lastName: row.last_name as string,
+    email: row.email as string,
+    phone: row.phone as string | null,
+    company: row.company as string | null,
+    dietaryRestrictions: row.dietary_restrictions as string | null,
+    checkedIn: row.checked_in as boolean,
+    checkedInAt: row.checked_in_at as string | null,
+    rsvpAt: row.rsvp_at as string,
+    qrExpiresAt: row.qr_expires_at as string | null,
+    qrUsedAt: row.qr_used_at as string | null,
+    qrUsedByDevice: row.qr_used_by_device as string | null,
+    eventId: row.event_id as string | null,
+    micrositeEntryId: row.microsite_entry_id as string | null,
     sourceData: row.source_data,
-    createdAt: row.created_at,
+    createdAt: row.created_at as string,
   };
 }
 

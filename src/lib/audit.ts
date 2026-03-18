@@ -7,13 +7,17 @@ export type CheckInOutcome =
   | 'rate_limited'
   | 'replay_attempt'
   | 'invalid_or_expired'
-  | 'error';
+  | 'error'
+  | 'demo_success'
+  | 'demo_already'
+  | 'demo_invalid';
 
 export function logCheckInAttempt(params: {
   ip: string;
   outcome: CheckInOutcome;
   attendeeId?: string | null;
   eventId?: string | null;
+  entryId?: string | null;
   timestamp?: Date;
 }): void {
   const { ip, outcome, attendeeId = null, eventId = null, timestamp = new Date() } = params;
