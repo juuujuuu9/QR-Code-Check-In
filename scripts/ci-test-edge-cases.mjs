@@ -11,6 +11,31 @@ import { setTimeout } from 'timers/promises';
 const BASE_URL = 'http://localhost:4321';
 const WAIT_MS = 8000;
 
+function isValidDatabaseUrl(value) {
+  if (!value || typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (trimmed === 'placeholder') return false;
+  if (!trimmed.includes('://')) return false;
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol.startsWith('postgres');
+  } catch {
+    return false;
+  }
+}
+
+function assertDatabaseUrlConfigured() {
+  const dbUrl = process.env.DATABASE_URL;
+  if (isValidDatabaseUrl(dbUrl)) return;
+  console.error('');
+  console.error('❌ DATABASE_URL is missing or invalid for edge-case CI tests.');
+  console.error('   Set a real Postgres connection string in CI before running test:edge-cases:ci.');
+  console.error('   Example: postgresql://user:password@host/dbname?sslmode=require');
+  console.error('');
+  process.exit(1);
+}
+
 async function waitForServer() {
   const start = Date.now();
   while (Date.now() - start < WAIT_MS) {
@@ -25,6 +50,8 @@ async function waitForServer() {
 }
 
 async function main() {
+  assertDatabaseUrlConfigured();
+
   const server = spawn('npm', ['run', 'dev'], {
     env: { ...process.env, BYPASS_AUTH_FOR_TESTS: 'true' },
     stdio: ['ignore', 'pipe', 'pipe'],

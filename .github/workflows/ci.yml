@@ -62,5 +62,5 @@ jobs:
       - name: Run edge case tests
         run: npm run test:edge-cases:ci
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL != '' && secrets.DATABASE_URL || vars.DATABASE_URL }}
           BYPASS_AUTH_FOR_TESTS: 'true'

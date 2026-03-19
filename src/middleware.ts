@@ -52,10 +52,15 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
 
   // Dev-only: bypass auth when BYPASS_AUTH_FOR_TESTS and X-Test-Mode: 1 present
   const testBypass =
-    process.env.NODE_ENV === 'development' &&
+    process.env.NODE_ENV !== 'production' &&
     process.env.BYPASS_AUTH_FOR_TESTS === 'true' &&
     request.headers.get('X-Test-Mode') === '1';
   if (testBypass) {
+    locals.user = {
+      id: 'test-user',
+      email: 'test@example.com',
+      role: 'organizer',
+    };
     locals.isStaff = true;
     locals.isAdmin = true;
     locals.isScanner = true;
