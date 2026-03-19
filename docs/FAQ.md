@@ -119,7 +119,7 @@ Yes — select attendees and click Export, or export all. You get a CSV with nam
 
 **Q: What if someone shows up who isn't on the list?**
 
-You can add them manually through the RSVP form (if it's still open) or add them directly in the admin panel.
+Add them through your event roster workflow in admin (for example, update and re-import CSV in merge mode) or use scanner manual lookup if they already exist in the event list.
 
 ---
 

@@ -1,23 +1,44 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import DashboardHeader from '../../components/DashboardHeader.astro';
 import {
   getOrganizationByOwnerUserId,
   getOrganizationMembershipsForUser,
-  listOrganizationInvitations,
 } from '../../lib/db';
 
 const userId = Astro.locals.user?.id ?? '';
 const organization = userId ? await getOrganizationByOwnerUserId(userId) : null;
-const invitations = organization ? await listOrganizationInvitations(organization.id) : [];
 const memberships = userId ? await getOrganizationMembershipsForUser(userId) : [];
 ---
 
 <Layout title="Organization">
   <div class="min-h-screen bg-background">
-    <main class="mx-auto max-w-4xl px-4 py-10 space-y-6">
-      <div>
-        <h1 class="text-2xl font-bold text-foreground">Organization settings</h1>
-        <p class="mt-1 text-sm text-muted-foreground">Invite staff and manage organization access.</p>
+    <DashboardHeader
+      homeHref="/admin"
+      homeLabel="Dashboard"
+      showThemeToggle={true}
+      showSignOut={true}
+      isAdmin={Astro.locals.isAdmin}
+      userEmail={Astro.locals.user?.email ?? ''}
+      inviteButtonId="open-invite-staff-modal-header"
+      secondaryLinks={[{ href: '/admin/organization', label: 'Organization' }]}
+    />
+    <main class="mx-auto max-w-6xl px-4 py-10 space-y-6">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold text-foreground">Organization settings</h1>
+          <p class="mt-1 text-sm text-muted-foreground">Manage team access and invitation status.</p>
+        </div>
+        {organization && Astro.locals.isAdmin && (
+          <button
+            id="open-invite-staff-modal-page"
+            data-open-invite-staff-modal="true"
+            type="button"
+            class="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+          >
+            Invite Staff
+          </button>
+        )}
       </div>
 
       {!organization ? (
@@ -30,98 +51,150 @@ const memberships = userId ? await getOrganizationMembershipsForUser(userId) : [
         </div>
       ) : (
         <>
-          <section class="rounded-lg border border-border bg-card p-6">
+          <section class="rounded-xl border border-border bg-card p-6">
             <h2 class="text-lg font-semibold text-foreground">{organization.name}</h2>
-            <p class="mt-1 text-sm text-muted-foreground">One organization per organizer on current plan.</p>
+            <p class="mt-1 text-sm text-muted-foreground">One organization per organizer on the current plan.</p>
           </section>
 
-          <section class="rounded-lg border border-border bg-card p-6">
-            <h2 class="text-lg font-semibold text-foreground">Invite staff</h2>
-            <form id="invite-form" class="mt-4 flex flex-wrap gap-3">
-              <input
-                id="invite-email"
-                type="email"
-                required
-                placeholder="staff@example.com"
-                class="min-w-[260px] flex-1 rounded border border-input bg-background px-3 py-2 text-foreground"
-              />
-              <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                Send invite
-              </button>
-            </form>
-            <p id="invite-status" class="mt-3 text-sm text-muted-foreground"></p>
-          </section>
+          <p id="organization-page-status" class="min-h-5 text-sm text-muted-foreground"></p>
 
-          <section class="rounded-lg border border-border bg-card p-6">
-            <h2 class="text-lg font-semibold text-foreground">Pending invites</h2>
-            {invitations.length === 0 ? (
-              <p class="mt-3 text-sm text-muted-foreground">No invites yet.</p>
+          <section class="rounded-xl border border-border bg-card">
+            <div class="border-b border-border px-6 py-4">
+              <h2 class="text-lg font-semibold text-foreground">Your memberships</h2>
+            </div>
+            {memberships.length === 0 ? (
+              <p class="px-6 py-6 text-sm text-muted-foreground">No memberships found.</p>
             ) : (
-              <ul class="mt-3 space-y-2 text-sm">
-                {invitations.map((invite) => (
-                  <li class="rounded border border-border bg-muted/40 px-3 py-2">
-                    <span class="font-medium text-foreground">{invite.email}</span>
-                    <span class="ml-2 text-muted-foreground">({invite.status})</span>
-                    <div class="mt-1 text-xs text-muted-foreground">
-                      Invite link: <code>{`${Astro.url.origin}/invite/accept?token=${invite.token}`}</code>
-                    </div>
-                    {invite.status === 'pending' && (
-                      <div class="mt-2 flex gap-2">
-                        <button
-                          type="button"
-                          data-invite-action="resend"
-                          data-invite-id={invite.id}
-                          class="rounded border border-border bg-background px-2 py-1 text-xs text-foreground hover:bg-muted"
-                        >
-                          Resend
-                        </button>
-                        <button
-                          type="button"
-                          data-invite-action="revoke"
-                          data-invite-id={invite.id}
-                          class="rounded border border-(--red-6) bg-(--red-2) px-2 py-1 text-xs text-(--red-11) hover:bg-(--red-3)"
-                        >
-                          Revoke
-                        </button>
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              <div class="overflow-x-auto">
+                <table class="min-w-full text-left text-sm">
+                  <thead class="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th class="px-6 py-3 font-medium">Role</th>
+                      <th class="px-6 py-3 font-medium">Organization ID</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {memberships.map((membership) => (
+                      <tr class="border-b border-border/80 last:border-b-0">
+                        <td class="px-6 py-4 font-medium text-foreground">{membership.role}</td>
+                        <td class="px-6 py-4 text-muted-foreground">{membership.organizationId}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
-          </section>
-
-          <section class="rounded-lg border border-border bg-card p-6">
-            <h2 class="text-lg font-semibold text-foreground">Your memberships</h2>
-            <ul class="mt-3 space-y-2 text-sm">
-              {memberships.length === 0 ? (
-                <li class="text-muted-foreground">No memberships found.</li>
-              ) : (
-                memberships.map((membership) => (
-                  <li class="rounded border border-border bg-muted/40 px-3 py-2">
-                    <span class="font-medium text-foreground">{membership.role}</span>
-                    <span class="ml-2 text-muted-foreground">Org: {membership.organizationId}</span>
-                  </li>
-                ))
-              )}
-            </ul>
           </section>
         </>
       )}
     </main>
   </div>
 
+  {organization && Astro.locals.isAdmin && (
+    <div
+      id="invite-staff-modal"
+      class="fixed inset-0 z-70 hidden items-center justify-center bg-black/60 px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="invite-staff-modal-title"
+    >
+      <div class="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-2xl">
+        <h2 id="invite-staff-modal-title" class="text-2xl font-bold text-foreground">Invite user</h2>
+        <p class="mt-1 text-sm text-muted-foreground">Invite a staff member to your organization by email.</p>
+
+        <form id="invite-staff-form" class="mt-5 space-y-4">
+          <div>
+            <label for="invite-staff-email" class="mb-1 block text-sm font-medium text-foreground">Email</label>
+            <input
+              id="invite-staff-email"
+              type="email"
+              required
+              placeholder="staff@example.com"
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <p id="invite-staff-status" class="min-h-5 text-sm text-muted-foreground"></p>
+
+          <div class="mt-2 flex gap-3">
+            <button
+              id="cancel-invite-staff-modal"
+              type="button"
+              class="flex-1 rounded-md border border-border bg-muted px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted/80"
+            >
+              Cancel
+            </button>
+            <button
+              id="submit-invite-staff"
+              type="submit"
+              class="flex-1 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+            >
+              Invite
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )}
+
   <script>
-    const form = document.getElementById('invite-form');
-    const emailInput = document.getElementById('invite-email');
-    const status = document.getElementById('invite-status');
+    const modal = document.getElementById('invite-staff-modal');
+    const openButtons = [
+      document.getElementById('open-invite-staff-modal-header'),
+      ...document.querySelectorAll('[data-open-invite-staff-modal]'),
+    ];
+    const cancelButton = document.getElementById('cancel-invite-staff-modal');
+    const form = document.getElementById('invite-staff-form');
+    const emailInput = document.getElementById('invite-staff-email');
+    const status = document.getElementById('invite-staff-status');
+    const pageStatus = document.getElementById('organization-page-status');
+    const submitButton = document.getElementById('submit-invite-staff');
+
+    const openModal = () => {
+      if (!(modal instanceof HTMLElement)) return;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      if (emailInput instanceof HTMLInputElement) emailInput.focus();
+      if (status instanceof HTMLElement) {
+        status.textContent = '';
+        status.className = 'min-h-5 text-sm text-muted-foreground';
+      }
+    };
+
+    const closeModal = () => {
+      if (!(modal instanceof HTMLElement)) return;
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      if (form instanceof HTMLFormElement) form.reset();
+      if (status instanceof HTMLElement) {
+        status.textContent = '';
+        status.className = 'min-h-5 text-sm text-muted-foreground';
+      }
+    };
+
+    openButtons.forEach((button) => {
+      button?.addEventListener('click', openModal);
+    });
+    cancelButton?.addEventListener('click', closeModal);
+
+    modal?.addEventListener('click', (event) => {
+      if (event.target === modal) closeModal();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && modal instanceof HTMLElement && !modal.classList.contains('hidden')) {
+        closeModal();
+      }
+    });
+
     form?.addEventListener('submit', async (event) => {
       event.preventDefault();
       const email = emailInput instanceof HTMLInputElement ? emailInput.value.trim() : '';
       if (!email) return;
-      if (status) {
+      if (submitButton instanceof HTMLButtonElement) submitButton.disabled = true;
+      if (status instanceof HTMLElement) {
         status.textContent = 'Sending invite...';
-        status.className = 'mt-3 text-sm text-muted-foreground';
+        status.className = 'min-h-5 text-sm text-muted-foreground';
       }
       try {
         const res = await fetch('/api/organizations/invitations', {
@@ -131,79 +204,38 @@ const memberships = userId ? await getOrganizationMembershipsForUser(userId) : [
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) {
-          if (status) {
+          if (status instanceof HTMLElement) {
             status.textContent = body.error || `Error ${res.status}`;
-            status.className = 'mt-3 text-sm text-[var(--red-11)]';
+            status.className = 'min-h-5 text-sm text-[var(--red-11)]';
           }
           return;
         }
-        if (status) {
+        if (status instanceof HTMLElement) {
           if (body?.communication?.sent) {
-            status.textContent = 'Invite email sent. Refresh to view the latest invite list.';
-            status.className = 'mt-3 text-sm text-[var(--green-11)]';
+            status.textContent = 'Invite email sent.';
+            status.className = 'min-h-5 text-sm text-[var(--green-11)]';
           } else {
             const reason = body?.communication?.error || 'Email service is not configured';
-            status.textContent = `Invite created, but email was not sent: ${reason}. You can still copy the invite link below after refresh.`;
-            status.className = 'mt-3 text-sm text-[var(--amber-11)]';
+            status.textContent = `Invite created, but email was not sent: ${reason}`;
+            status.className = 'min-h-5 text-sm text-[var(--amber-11)]';
           }
         }
-        if (emailInput instanceof HTMLInputElement) emailInput.value = '';
+        if (pageStatus instanceof HTMLElement) {
+          pageStatus.textContent = 'Invite sent. Refreshing list...';
+          pageStatus.className = 'min-h-5 text-sm text-[var(--green-11)]';
+        }
+        window.setTimeout(() => {
+          window.location.reload();
+        }, 500);
       } catch {
-        if (status) {
+        if (status instanceof HTMLElement) {
           status.textContent = 'Could not send invite';
-          status.className = 'mt-3 text-sm text-[var(--red-11)]';
-        }
-      }
-    });
-
-    document.addEventListener('click', async (event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLElement)) return;
-      const action = target.getAttribute('data-invite-action');
-      const inviteId = target.getAttribute('data-invite-id');
-      if (!action || !inviteId) return;
-
-      const button = target as HTMLButtonElement;
-      button.disabled = true;
-      if (status) {
-        status.textContent = action === 'revoke' ? 'Revoking invite...' : 'Resending invite...';
-        status.className = 'mt-3 text-sm text-muted-foreground';
-      }
-
-      try {
-        const res = await fetch(`/api/organizations/invitations/${encodeURIComponent(inviteId)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action }),
-        });
-        const body = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          if (status) {
-            status.textContent = body.error || `Error ${res.status}`;
-            status.className = 'mt-3 text-sm text-[var(--red-11)]';
-          }
-          return;
-        }
-
-        if (status) {
-          if (action === 'revoke') {
-            status.textContent = 'Invite revoked. Refreshing...';
-          } else if (body?.communication?.sent) {
-            status.textContent = 'Invite email resent. Refreshing...';
-          } else {
-            status.textContent = `Invite exists but resend failed: ${body?.communication?.error || 'Email service unavailable'}`;
-          }
-          status.className = 'mt-3 text-sm text-[var(--green-11)]';
-        }
-        window.location.reload();
-      } catch {
-        if (status) {
-          status.textContent = 'Could not process invite action';
-          status.className = 'mt-3 text-sm text-[var(--red-11)]';
+          status.className = 'min-h-5 text-sm text-[var(--red-11)]';
         }
       } finally {
-        button.disabled = false;
+        if (submitButton instanceof HTMLButtonElement) submitButton.disabled = false;
       }
     });
+
   </script>
 </Layout>

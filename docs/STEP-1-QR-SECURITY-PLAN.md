@@ -13,7 +13,7 @@ This document plans **Step 1** of the dev checklist: moving from weak, static QR
 - **If you have existing data:** Run `npm run migrate-qr` once to add token columns and backfill attendee `id` to UUIDs. After that, only QR codes in `id:qr_token` format work at check-in.
 - **Fresh installs:** `npm run setup-db` already creates the new schema (UUID `id`, token columns).
 - **Next steps (see [MASTER-PLAN.md](MASTER-PLAN.md) for full order):**
-  - **Item 2:** Google login (auth-astro) for staff-only Admin.
+  - **Auth + access model:** Completed via Clerk plus app-managed organizations/memberships/invitations (see `AUTH-CLERK-SETUP.md` and item 12 in the master plan).
   - **Phase 3 (backlog):** Geolocation, anomaly detection, or encrypted QR payloads when you need them.
   - **Optional hardening:** Add a `check_in_attempts` table and log there instead of (or in addition to) console; send `scannerDeviceId` from the scanner UI for better audit trails.
 
@@ -162,4 +162,4 @@ This document plans **Step 1** of the dev checklist: moving from weak, static QR
 - **Phase 2 (done):** Dynamic, single-use tokens in QR + expiry + replay detection + refresh endpoint — shoulder-surfing and replay addressed.
 - **Phase 3 (backlog):** Geolocation, anomaly detection, encrypted payloads — when you need stronger guarantees.
 
-Step 1 of the [master plan](MASTER-PLAN.md) (“QR/check-in security”) is complete. Use the **Progress & next steps** section above for what to run; the master plan lists the next checklist item (Google login).
+Step 1 of the [master plan](MASTER-PLAN.md) (“QR/check-in security”) is complete. Use the **Progress & next steps** section above for what to run; active follow-on priorities are listed in the master plan (hardware scanner support, duplicate scan visibility, and remaining edge-case hardening/reporting items).

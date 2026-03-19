@@ -2,7 +2,7 @@
 
 **Purpose:** Single source of truth for development progress. Use as the dev checklist; update when completing work; reference from other docs. Feeds into later documentation.
 
-**Last updated:** 2026-03-18 (Executed Org-based access migration: removed env email roles, added organizations/memberships/invitations, and event/org scoped authorization)
+**Last updated:** 2026-03-18 (Cross-checked roadmap against implementation; updated scanner/QR hardening statuses and edge-case subtask notes)
 
 ---
 
@@ -22,6 +22,7 @@
 | RSVP in DB | Done | `scripts/setup-tables.mjs`, `src/lib/db.ts` |
 | Unique identifier | **Done** | UUID + short-lived token; see STEP-1. |
 | QR gen + email | Done | `src/lib/email.ts`, RSVPForm |
+| Production sender domain (`FROM_EMAIL`) | Missing | Still using Resend onboarding sender in non-production setup; must switch to verified domain `noreply@<chosen-domain>` before launch. |
 | QR download (single + bulk ZIP) | Missing | CSV export exists; no QR PNG download/ZIP flow yet. |
 | Print-ready QR badges (name below code) | Missing | No print stylesheet or badge layout currently. |
 | QR minimum size thresholds | Partial | QR width is set in config, but no explicit print-size enforcement/tests. |
@@ -40,8 +41,8 @@
 | Target overlay / distance hint | **Done** | "6–10 inches" hint when scanning; qrbox. |
 | Flashlight / torch | **Done** | Custom torch button via getRunningTrackCameraCapabilities when supported. |
 | Hardware scanner (keyboard wedge) | Missing | No hidden input for laser scanners. |
-| Stolen screenshot / scan count | Missing | No "duplicate use" visibility in admin/scanner. |
-| Brightness / high-contrast QR | Partial | Email copy exists; QR config not explicit. |
+| Stolen screenshot / scan count | Partial | Option A is implemented (clear already-checked-in guidance in scanner); Option B (duplicate scan counters in DB/admin) is still pending. |
+| Brightness / high-contrast QR | **Done** | Explicit black/white QR colors + `errorCorrectionLevel: 'H'` in `src/config/qr.ts`; scanner guidance includes attendee brightness reminder. |
 | Debug code in production | **Done** | Removed agent log fetch calls from CheckInScanner.tsx. |
 | Auth bypass vulnerability | **Done** | Added NODE_ENV check to test bypass in middleware.ts. |
 | Input validation | **Done** | Added zod validation for email, forms, check-ins. |
@@ -96,7 +97,7 @@ Follow this order; check off and date as you complete each item.
 
 ### 5. Traffic light UI + audio/haptic + distance hint
 
-- [x] **Done.** Green — success; Yellow (amber) — already checked in (409); Red — invalid/not found. Vibrate + preloaded audio + aria-live; standalone overlay + "Scan next"; 150 ms delay; continuous scanning on /scanner. `src/lib/feedback.ts`, `CheckInScanner.tsx`, `api/checkin` 409 body.
+- [x] **Done.** Green — success; Yellow (amber) — already checked in (409); Red — invalid/not found. Vibrate + preloaded audio + aria-live; standalone overlay + "Scan next"; 500 ms debounce for scan stability; continuous scanning on `/scanner`. `src/lib/feedback.ts`, `CheckInScanner.tsx`, `src/config/qr.ts`, `api/checkin` 409 body.
 - [x] **Done.** "6–10 inches" distance hint when scanning; custom torch button when device supports it (getRunningTrackCameraCapabilities).
 
 ### 6. Hardware scanner (keyboard wedge)
@@ -105,11 +106,11 @@ Follow this order; check off and date as you complete each item.
 
 ### 7. Stolen screenshot visibility
 
-- [ ] Option A: Clear 409 copy ("If this is a new guest, ask for ID…"). Option B: `scan_attempt_count` (or similar) in DB; show "Duplicate scans: N" in admin and on scanner.
+- [x] **Done (Option A).** Clear 409 copy added in scanner UI ("If this is a different guest, ask for ID and use name search."). Option B (`scan_attempt_count` + duplicate scan metrics in admin/scanner) remains backlog.
 
 ### 8. High-contrast QR + brightness copy
 
-- [ ] Explicit black/white in QR config if needed; keep or strengthen email copy about brightness.
+- [x] **Done.** Explicit black/white QR generation config (`dark: '#000000'`, `light: '#FFFFFF'`) with `errorCorrectionLevel: 'H'`; scanner instructions reinforce attendee brightness guidance.
 
 ### 9. Offline capability
 
@@ -134,13 +135,13 @@ Follow this order; check off and date as you complete each item.
 - [ ] **Door-operations resilience**
   - Low-light/damaged-code fallback UX improvements.
   - Sub-second perceived feedback target with measurable latency budget.
-  - Clear re-scan copy and differentiated already-checked-in cues.
+  - Clear re-scan copy and differentiated already-checked-in cues. **Done (2026-03-18):** explicit ID-check guidance + distinct warning-state feedback in scanner (`src/components/CheckInScanner.tsx`, `src/lib/feedback.ts`).
 - [ ] **Offline + multi-station correctness**
-  - Sync retry/backoff and queue visibility for operators.
-  - Manual check-in path made atomic/idempotent (409 on duplicate).
+  - Sync retry/backoff and queue visibility for operators. **Done (2026-03-18):** retry-with-backoff + live queued count (`src/lib/offline.ts`, `src/components/CheckInScanner.tsx`).
+  - Manual check-in path made atomic/idempotent (409 on duplicate). **Done (2026-03-18):** conditional DB update + 409 replay behavior (`src/lib/db.ts`, `src/pages/api/checkin.ts`).
   - Duplicate submission protection for offline replay.
 - [ ] **Roles + session ergonomics**
-  - Enforce scanner vs admin route/API boundaries in middleware.
+  - Enforce scanner vs admin route/API boundaries in middleware. **Done (2026-03-18):** middleware/API boundaries enforced, now org/membership scoped.
   - Tighten scanner-device re-auth/session-expiry flow.
 - [ ] **Post-event reporting**
   - Dedicated no-shows report/filter + export.
@@ -186,6 +187,13 @@ Follow this order; check off and date as you complete each item.
 
 - [x] **Done (2026-03-18).** Replaced env-based email role mapping with app-managed organizations, memberships, and invitations. Enforced one organization per organizer and one event per organization (paywall-ready constraint); scoped dashboard/scanner/API access to organization events. Added organizer onboarding and staff invitation acceptance flows. Primary files: `scripts/migrate-organizations.mjs`, `src/lib/db.ts`, `src/middleware.ts`, `src/pages/api/organizations/*`, `src/pages/onboarding/organization.astro`, `src/pages/invite/accept.astro`, `src/pages/admin/organization.astro`.
 
+### 13. Go-live email sender readiness
+
+- [ ] Verify Resend sending domain for production website domain.
+- [ ] Set `FROM_EMAIL` to `noreply@<chosen-domain>` (replace onboarding sender) in production environment.
+- [ ] Confirm sender preview in admin bulk email modal shows `... <noreply@<chosen-domain>>`.
+- [ ] Run one end-to-end bulk-email smoke test in production-like env after domain verification.
+
 ### UI/UX polish (done)
 
 - [x] **Done.** Status badges (success/muted), empty states, table hover actions, activity feed with relative timestamps, typography hierarchy, dark mode (class-based toggle), search with cmd+K (fuse.js), progress bar on check-in rate card, micro-interactions (scanner pulse, delete spinner), density toggle, avatars, bulk select/delete/export, event combobox. See `.cursor/plans/` for full spec.
@@ -225,6 +233,7 @@ Deferred / lower priority:
 | [STEP-2-CENTRAL-HUB.md](STEP-2-CENTRAL-HUB.md) | Item 3: Central hub, events, CSV import (primary), webhook optional. |
 | [FORM-MICROSITE-SETUP.md](FORM-MICROSITE-SETUP.md) | Linking a form microsite to the hub; copying Cursor rule into new projects. |
 | [form-microsite-hub-integration.mdc](form-microsite-hub-integration.mdc) | Portable Cursor rule: copy to new microsite’s `.cursor/rules/` for hub integration context. |
+| [EMAIL-SENDER-GO-LIVE-CHECKLIST.md](EMAIL-SENDER-GO-LIVE-CHECKLIST.md) | Production sender cutover checklist (Resend domain verify, `FROM_EMAIL=noreply@...`, modal preview + smoke test). |
 | [ui-modernization/](ui-modernization/) | UI Modernization: CURSOR-CHECKLIST, qr-ui-components, qr-ui-animations.css. Rule: `.cursor/rules/ui-modernization.mdc`. Radix Colors: `radix-colors-mapping.md`. |
 | [qr-edge-cases.md](qr-edge-cases.md) | API edge-case tests, CSV import validation, critical manual paths. `scripts/test-edge-cases.mjs`, `scripts/generate-test-csvs.mjs`. |
 | [AUTH-CLERK-SETUP.md](AUTH-CLERK-SETUP.md) | Item 2 + 12: Clerk auth setup, org/membership-based authorization, onboarding/invites. |

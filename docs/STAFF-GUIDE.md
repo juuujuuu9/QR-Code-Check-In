@@ -8,8 +8,8 @@ Scan QR codes to check in attendees as they arrive. If QR scanning fails, use ma
 
 ## 📱 Getting Started (2 minutes)
 
-1. **Open the scanner page** on your phone
-2. **Tap "Start Scanning"**
+1. **Open the scanner page** on your phone (`/` or `/scanner`)
+2. **Tap "Start Scanner"**
 3. **Allow camera access** if prompted
 4. **Test it** — scan your own QR code, or use the [Demo Codes](/demo-codes) page (Green/Yellow/Red test codes)
 
@@ -31,11 +31,11 @@ Scan QR codes to check in attendees as they arrive. If QR scanning fails, use ma
 
 ### Manual Lookup (When QR Fails)
 
-1. Tap **"Manual Lookup"**
+1. Use the **"Or check in by name"** search field
 2. Ask for their **name or email**
 3. Type it in
 4. Tap their name when it appears
-5. Tap **"Check In"**
+5. Tap **"Check in"**
 
 ---
 

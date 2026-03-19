@@ -1,0 +1,72 @@
+---
+import { ThemeToggle } from './ThemeToggle';
+import { SignOutButton } from '@clerk/astro/components';
+
+type HeaderLink = {
+  href: string;
+  label: string;
+};
+
+interface Props {
+  homeHref?: string;
+  homeLabel?: string;
+  secondaryLinks?: HeaderLink[];
+  showThemeToggle?: boolean;
+  showSignOut?: boolean;
+  isAdmin?: boolean;
+  userEmail?: string;
+  inviteButtonId?: string;
+}
+
+const {
+  homeHref = '/admin',
+  homeLabel = 'Dashboard',
+  secondaryLinks = [],
+  showThemeToggle = false,
+  showSignOut = false,
+  isAdmin = false,
+  userEmail = '',
+  inviteButtonId = 'open-invite-staff-modal',
+} = Astro.props;
+---
+
+<header class="bg-card border-b border-border sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16">
+      <div class="flex items-center gap-3">
+        <a href={homeHref} class="flex items-center gap-3">
+          <div class="bg-primary p-2 rounded-lg">
+            <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          </div>
+          <span class="font-bold text-foreground">{homeLabel}</span>
+        </a>
+        {secondaryLinks.map((link) => (
+          <a href={link.href} class="text-sm text-muted-foreground hover:text-primary">{link.label}</a>
+        ))}
+      </div>
+      {(showThemeToggle || showSignOut || isAdmin || userEmail) && (
+        <div class="flex items-center gap-4">
+          {showThemeToggle && <ThemeToggle client:load />}
+          {isAdmin ? (
+            <button
+              id={inviteButtonId}
+              type="button"
+              class="rounded-md border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
+            >
+              Invite Staff
+            </button>
+          ) : (
+            userEmail && <span class="text-sm text-muted-foreground">{userEmail}</span>
+          )}
+          {showSignOut && (
+            <SignOutButton asChild redirectUrl="/">
+              <button type="button" class="text-sm text-muted-foreground hover:text-primary bg-transparent border-none cursor-pointer p-0 font-inherit">Sign out</button>
+            </SignOutButton>
+          )}
+        </div>
+      )}
+    </div>
+  </div>
+</header>

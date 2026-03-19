@@ -1,6 +1,7 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import { getEventByIdForUser, getAllEventsForUser } from '../../../lib/db';
+import DashboardHeader from '../../../components/DashboardHeader.astro';
+import { getEventByIdForUser, getAllEventsForUser, getOrganizationById } from '../../../lib/db';
 
 const userId = Astro.locals.user?.id ?? '';
 const eventId = Astro.url.searchParams.get('event')?.trim();
@@ -10,27 +11,21 @@ const events = userId ? await getAllEventsForUser(userId) : [];
 if (eventId && userId) {
   event = await getEventByIdForUser(eventId, userId);
 }
+
+const organization = event?.organizationId ? await getOrganizationById(event.organizationId) : null;
+const organizationName = organization?.name ?? '';
+const fromEmail = (typeof process !== 'undefined' && process.env.FROM_EMAIL)
+  || (typeof import.meta !== 'undefined' && import.meta.env?.FROM_EMAIL)
+  || 'onboarding@resend.dev';
 ---
 
 <Layout title="Import CSV">
   <div class="min-h-screen bg-background">
-    <header class="bg-card border-b border-border sticky top-0 z-50">
-      <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
-          <div class="flex items-center gap-3">
-            <a href="/admin/events" class="flex items-center gap-3">
-              <div class="bg-primary p-2 rounded-lg">
-                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-              </div>
-              <span class="font-bold text-foreground">Events</span>
-            </a>
-            <a href="/admin" class="text-sm text-muted-foreground hover:text-primary">Attendees</a>
-          </div>
-        </div>
-      </div>
-    </header>
+    <DashboardHeader
+      homeHref="/admin/events"
+      homeLabel="Events"
+      secondaryLinks={[{ href: '/admin', label: 'Attendees' }]}
+    />
 
     <main class="max-w-2xl mx-auto px-2 sm:px-6 lg:px-8 py-8">
       <h1 class="text-2xl font-bold text-foreground mb-6">Import CSV</h1>
@@ -171,14 +166,46 @@ if (eventId && userId) {
               </p>
               <div class="space-y-4">
                 <div>
-                  <label for="from-name-input" class="block text-sm font-medium text-muted-foreground mb-1">From name</label>
-                  <input
-                    type="text"
-                    id="from-name-input"
-                    placeholder="e.g. Acme Events"
-                    class="w-full rounded border border-input bg-background px-3 py-2 text-foreground"
-                  />
-                  <p class="mt-1 text-xs text-muted-foreground">Shown as the sender (e.g. "Acme Events &lt;noreply@acme.com&gt;")</p>
+                  <label class="block text-sm font-medium text-muted-foreground mb-1">From name</label>
+                  <div class="space-y-2">
+                    <label class="flex items-start gap-2 text-sm text-foreground">
+                      <input
+                        type="radio"
+                        name="from-name-mode"
+                        id="from-name-org-option"
+                        value="organization"
+                        class="mt-0.5"
+                        checked={Boolean(organizationName)}
+                        disabled={!organizationName}
+                      />
+                      <span>
+                        Use current organization name
+                        <span class="text-muted-foreground">({organizationName || 'Not available'})</span>
+                      </span>
+                    </label>
+                    <label class="flex items-start gap-2 text-sm text-foreground">
+                      <input
+                        type="radio"
+                        name="from-name-mode"
+                        id="from-name-custom-option"
+                        value="custom"
+                        class="mt-0.5"
+                        checked={!organizationName}
+                      />
+                      <span>Use a custom from name</span>
+                    </label>
+                  </div>
+                  <div id="from-name-custom-row" class={organizationName ? 'mt-2 hidden' : 'mt-2'}>
+                    <input
+                      type="text"
+                      id="from-name-input"
+                      placeholder="e.g. Acme Events"
+                      class="w-full rounded border border-input bg-background px-3 py-2 text-foreground"
+                    />
+                  </div>
+                  <p class="mt-1 text-xs text-muted-foreground">
+                    Sender preview: <span id="from-sender-preview" class="font-mono">Event Check-In &lt;{fromEmail}&gt;</span>
+                  </p>
                 </div>
                 <div>
                   <label for="event-name-input" class="block text-sm font-medium text-muted-foreground mb-1">Event name</label>
@@ -282,7 +309,7 @@ if (eventId && userId) {
     </main>
   </div>
 
-  <script define:vars={{ eventId: event?.id, eventName: event?.name ?? '' }}>
+  <script define:vars={{ eventId: event?.id, eventName: event?.name ?? '', organizationName, fromEmail }}>
     const form = document.getElementById('import-form');
     if (!form || !eventId) return;
     const fileInput = form.querySelector('input[name="file"]');
@@ -325,7 +352,11 @@ if (eventId && userId) {
     const resultErrors = document.getElementById('result-errors');
     const skipEmailLink = document.getElementById('skip-email-link');
     const bulkDialog = document.getElementById('bulk-email-dialog');
+    const fromNameOrgOption = document.getElementById('from-name-org-option');
+    const fromNameCustomOption = document.getElementById('from-name-custom-option');
+    const fromNameCustomRow = document.getElementById('from-name-custom-row');
     const fromNameInput = document.getElementById('from-name-input');
+    const fromSenderPreview = document.getElementById('from-sender-preview');
     const eventNameInput = document.getElementById('event-name-input');
     const dialogCount = document.getElementById('dialog-count');
     const dialogError = document.getElementById('bulk-dialog-error');
@@ -337,6 +368,50 @@ if (eventId && userId) {
     let selectedDelimiter = ',';
     let errorRowsObjectUrl = null;
     let customMappingRows = [];
+
+    function updateFromNameCustomVisibility() {
+      const customSelected = Boolean(fromNameCustomOption?.checked);
+      if (!fromNameCustomRow || !fromNameInput) return;
+      fromNameCustomRow.classList.toggle('hidden', !customSelected);
+      fromNameInput.disabled = !customSelected;
+      if (!customSelected) fromNameInput.value = '';
+    }
+
+    function resolveSelectedFromName() {
+      const usingOrganizationName = Boolean(fromNameOrgOption?.checked && String(organizationName || '').trim());
+      if (usingOrganizationName) return String(organizationName).trim();
+      return fromNameInput?.value.trim() || '';
+    }
+
+    function updateFromSenderPreview() {
+      if (!fromSenderPreview) return;
+      const selectedName = resolveSelectedFromName();
+      if (selectedName) {
+        fromSenderPreview.textContent = `${selectedName} <${fromEmail}>`;
+        return;
+      }
+      fromSenderPreview.textContent = `<${fromEmail}>`;
+    }
+
+    function validateAndSendFromDialog() {
+      const from = resolveSelectedFromName();
+      const evName = eventNameInput?.value.trim() || '';
+      if (!from) {
+        if (dialogError) {
+          dialogError.textContent = 'Please choose an organization name or enter a custom From name.';
+          dialogError.classList.remove('hidden');
+        }
+        return;
+      }
+      if (!evName) {
+        if (dialogError) {
+          dialogError.textContent = 'Please enter an Event name.';
+          dialogError.classList.remove('hidden');
+        }
+        return;
+      }
+      executeBulkSend(from, evName);
+    }
 
     function normalizeHeader(header) {
       return String(header || '').replace(/^\uFEFF/, '').trim().toLowerCase().replace(/\s+/g, '_');
@@ -560,24 +635,8 @@ if (eventId && userId) {
       e.preventDefault();
 
       // If bulk email dialog is open, Enter in inputs submits parent form — handle it here instead of re-importing
-      if (bulkDialog?.open && dialogSend && fromNameInput && eventNameInput) {
-        const from = fromNameInput.value.trim();
-        const evName = eventNameInput.value.trim();
-        if (!from) {
-          if (dialogError) {
-            dialogError.textContent = 'Please enter a From name.';
-            dialogError.classList.remove('hidden');
-          }
-          return;
-        }
-        if (!evName) {
-          if (dialogError) {
-            dialogError.textContent = 'Please enter an Event name.';
-            dialogError.classList.remove('hidden');
-          }
-          return;
-        }
-        executeBulkSend(from, evName);
+      if (bulkDialog?.open && dialogSend && eventNameInput) {
+        validateAndSendFromDialog();
         return;
       }
 
@@ -716,7 +775,14 @@ if (eventId && userId) {
     function openBulkEmailDialog() {
       if (!bulkDialog || importedAttendeeIds.length === 0) return;
       if (eventNameInput) eventNameInput.value = eventName || '';
+      if (fromNameOrgOption && String(organizationName || '').trim()) {
+        fromNameOrgOption.checked = true;
+      } else if (fromNameCustomOption) {
+        fromNameCustomOption.checked = true;
+      }
       if (fromNameInput) fromNameInput.value = '';
+      updateFromNameCustomVisibility();
+      updateFromSenderPreview();
       if (dialogCount) dialogCount.textContent = importedAttendeeIds.length;
       if (dialogError) {
         dialogError.textContent = '';
@@ -724,6 +790,24 @@ if (eventId && userId) {
       }
       bulkDialog.showModal();
     }
+
+    if (fromNameOrgOption) {
+      fromNameOrgOption.addEventListener('change', () => {
+        updateFromNameCustomVisibility();
+        updateFromSenderPreview();
+      });
+    }
+    if (fromNameCustomOption) {
+      fromNameCustomOption.addEventListener('change', () => {
+        updateFromNameCustomVisibility();
+        updateFromSenderPreview();
+      });
+    }
+    if (fromNameInput) {
+      fromNameInput.addEventListener('input', updateFromSenderPreview);
+    }
+    updateFromNameCustomVisibility();
+    updateFromSenderPreview();
 
     if (dialogCancel) {
       dialogCancel.addEventListener('click', () => bulkDialog?.close());
@@ -803,25 +887,9 @@ if (eventId && userId) {
       });
     }
 
-    if (dialogSend && fromNameInput && eventNameInput) {
+    if (dialogSend && eventNameInput) {
       dialogSend.addEventListener('click', () => {
-        const from = fromNameInput.value.trim();
-        const evName = eventNameInput.value.trim();
-        if (!from) {
-          if (dialogError) {
-            dialogError.textContent = 'Please enter a From name.';
-            dialogError.classList.remove('hidden');
-          }
-          return;
-        }
-        if (!evName) {
-          if (dialogError) {
-            dialogError.textContent = 'Please enter an Event name.';
-            dialogError.classList.remove('hidden');
-          }
-          return;
-        }
-        executeBulkSend(from, evName);
+        validateAndSendFromDialog();
       });
     }
   </script>

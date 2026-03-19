@@ -209,17 +209,17 @@ src/
 
 ## Priority Checklist
 
-- [ ] StatusBadge component
-- [ ] Hover actions on table rows
-- [ ] EmptyState for zero attendees
-- [ ] Typography hierarchy (title + subtitle)
-- [ ] GlobalSearch with cmd+k hint
-- [ ] Relative timestamps ("2m ago")
+- [x] StatusBadge component
+- [x] Hover actions on table rows
+- [x] EmptyState for zero attendees
+- [x] Typography hierarchy (title + subtitle)
+- [x] GlobalSearch with cmd+k hint
+- [x] Relative timestamps ("2m ago")
 - [ ] Stats cards with trend indicators
 - [ ] Check-in progress donut chart
 - [ ] Activity feed sidebar
-- [ ] Dark mode toggle
-- [ ] Animation CSS imported
+- [x] Dark mode toggle
+- [x] Animation CSS imported
 - [ ] Reduced motion support tested
 
 ---
@@ -228,9 +228,9 @@ src/
 
 - [ ] Light mode looks good
 - [ ] Dark mode looks good
-- [ ] Table actions show on hover
-- [ ] Empty state displays when no attendees
-- [ ] Cmd+K focuses search
+- [x] Table actions show on hover
+- [x] Empty state displays when no attendees
+- [x] Cmd+K focuses search
 - [ ] Mobile layout works (stack cards, hide sidebar)
-- [ ] Reduced motion disables animations
-- [ ] Screen reader announces status badges
+- [x] Reduced motion disables animations
+- [x] Screen reader announces status badges

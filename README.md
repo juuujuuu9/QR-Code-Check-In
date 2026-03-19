@@ -1,145 +1,127 @@
-# QR Check-In
+# QR Code Check-In
 
-Event RSVP and check-in app: guests RSVP and receive a QR code; staff scan codes to check people in. **One repo**, **one deploy** (Vercel) - Astro for pages and API routes, no separate backend or CORS.
+QR check-in platform for live events with:
+
+- organization + staff access control (Clerk + app-managed memberships)
+- event-scoped attendee management
+- QR token check-in scanner (camera/manual fallback, offline queue)
+- CSV import/export and bulk QR email sending
+
+Astro powers both UI routes and API routes in a single deploy.
 
 ## Requirements
 
-- **Node 20+**
-- PostgreSQL (e.g. [Neon](https://neon.tech))
-- [Resend](https://resend.com) account for optional QR email delivery
+- Node 20+
+- PostgreSQL (for example [Neon](https://neon.tech))
+- [Clerk](https://clerk.com) (auth)
+- [Resend](https://resend.com) (email sending)
 
 ## Quick Start
 
-1. **Copy env** and fill in your values:
+1. Copy env file:
+
    ```bash
    cp .env.example .env
    ```
-   Edit `.env`: `DATABASE_URL`, `RESEND_API_KEY`, `FROM_EMAIL`, `FROM_NAME`.
 
-2. **Create the database table** (one-time):
+2. Fill required values in `.env`:
+   - `DATABASE_URL`
+   - `CLERK_PUBLISHABLE_KEY`
+   - `CLERK_SECRET_KEY`
+   - `RESEND_API_KEY`
+   - `FROM_EMAIL`
+   - `FROM_NAME`
+
+3. Initialize schema:
+
    ```bash
    npm run setup-db
+   npm run migrate-events
+   npm run migrate-organizations
+   npm run migrate-staff-preferences
    ```
-   Uses `DATABASE_URL` from `.env`. Idempotent; re-running drops and recreates the `attendees` table.
 
-3. **Run locally**:
+   Notes:
+   - `setup-db` is destructive for `attendees` (drops/recreates the table) and is meant for local setup/reset.
+   - On existing environments, use migrations only (skip `setup-db`).
+
+4. Start locally:
+
    ```bash
    npm run dev
    ```
-   Open http://localhost:4321 (or the port in `PORT`).
 
-4. **Deploy**: See [Deploy to Vercel](#deploy-to-vercel) below.
+5. Open `http://localhost:4321`, sign in, complete organization onboarding, then create/select an event.
 
-## Flow
+## Core Routes
 
-1. **RSVP** - Guest submits form → attendee stored in DB → QR code generated and shown (and optionally emailed via Resend).
-2. **Check-in** - Staff scans QR (camera or standalone `/scanner` page) → attendee marked checked-in.
-3. **Admin** - List attendees, search, delete, export CSV, resend QR emails.
+| Route | Purpose |
+|---|---|
+| `/admin` | Main organizer/staff dashboard |
+| `/admin/events` | Event management |
+| `/admin/events/import` | Event CSV import + optional bulk QR email send |
+| `/admin/organization` | Organization settings + invitations |
+| `/scanner` | Standalone scanner experience |
+| `/login` | Authentication entry |
+| `/invite/accept` | Invitation acceptance flow |
+| `/onboarding/organization` | Organization setup flow |
 
-## Tech Stack
+## Key API Endpoints
 
-| Layer          | Choice                          |
-|----------------|----------------------------------|
-| Framework      | Astro 5 (pages + API routes)     |
-| Styling        | Tailwind CSS 4                   |
-| Interactivity  | React 19 (islands)               |
-| QR generation  | `qrcode`                         |
-| QR scanning    | `html5-qrcode`                   |
-| Database       | Neon Postgres (`@neondatabase/serverless`) |
-| Email          | Resend                           |
-| UI primitives  | Radix UI, Lucide icons, Sonner toasts |
-
-## Development & roadmap
-
-The **dev checklist and progress** live in **[docs/MASTER-PLAN.md](docs/MASTER-PLAN.md)**. Use it to track what's done and what's next; update it when you complete items. It's the single reference for the roadmap and for later documentation.
-
-## User Documentation
-
-End-user guides for event staff, organizers, and attendees:
-
-- **[QUICK-START.md](docs/QUICK-START.md)** — Get up and running in 5 minutes
-- **[USER-GUIDE.md](docs/USER-GUIDE.md)** — Complete guide for all user types
-- **[FAQ.md](docs/FAQ.md)** — Common questions and answers
-- **[STAFF-GUIDE.md](docs/STAFF-GUIDE.md)** — One-page day-of-event reference (print this!)
-
-See [docs/README.md](docs/README.md) for which document to give to which audience.
-
-## Project Structure
-
-```
-src/
-  components/     # React: AppShell, RSVPForm, CheckInScanner, AdminDashboard + ui/
-  layouts/        # Layout.astro
-  lib/            # db, email, utils
-  pages/          # index.astro, scanner.astro, api/*.ts
-  services/       # api.ts (client API helpers)
-  styles/         # global.css
-  types/          # attendee.ts
-  config/         # qr.ts
-scripts/
-  setup-tables.mjs   # One-time DB table creation
-```
+| Endpoint | Purpose |
+|---|---|
+| `GET/POST/DELETE /api/attendees` | List/create/delete attendees (event-scoped) |
+| `POST /api/checkin` | QR check-in and manual attendeeId check-in |
+| `GET /api/attendees/offline-cache` | Scanner offline cache payload |
+| `POST /api/attendees/import` | CSV import with mapping/modes/warnings |
+| `GET /api/attendees/export` | CSV export |
+| `POST /api/attendees/send-bulk-qr` | Bulk QR email sending |
+| `POST /api/attendees/refresh-qr` | Single attendee QR refresh |
+| `POST /api/events` / `DELETE /api/events/:id` | Event management APIs |
+| `POST /api/webhooks/entry` | Microsite/hub webhook ingestion |
+| `GET /api/health` | Health check |
 
 ## Environment Variables
 
-| Variable         | Required | Description |
-|------------------|----------|-------------|
-| `DATABASE_URL`   | Yes      | PostgreSQL connection string (e.g. Neon) |
-| `RESEND_API_KEY` | Yes      | Resend API key |
-| `FROM_EMAIL`     | Yes      | Sender address (e.g. `onboarding@resend.dev` for testing) |
-| `FROM_NAME`      | Yes      | Sender display name |
-| `PORT`           | No       | Dev server port (default `4321`) |
+See `.env.example` for the canonical list. Main variables:
 
-No `VITE_API_URL` or CORS - frontend and API are same-origin.
+- `DATABASE_URL`
+- `CLERK_PUBLISHABLE_KEY`
+- `CLERK_SECRET_KEY`
+- `RESEND_API_KEY`
+- `FROM_EMAIL`
+- `FROM_NAME`
+- `MICROSITE_WEBHOOK_KEY`
+- `DEFAULT_EVENT_SLUG`
+- `APP_URL` (optional)
+- `PORT` (optional)
+- `QR_TOKEN_TTL_DAYS` (optional)
 
 ## Scripts
 
-| Command           | Action |
-|-------------------|--------|
-| `npm run dev`     | Start dev server |
-| `npm run build`   | Production build |
-| `npm run preview` | Preview production build locally |
-| `npm run setup-db`| Create/reset `attendees` table (reads `.env`) |
-| `npm run test:edge-cases` | Run API edge-case tests (dev server must be running) |
-| `npm run test:edge-cases:ci` | Start server, run tests, exit (single command) |
-| `npm run test:generate-csvs` | Generate 15 test CSV files for import testing |
+| Command | Action |
+|---|---|
+| `npm run dev` | Start dev server |
+| `npm run build` | Build production bundle |
+| `npm run preview` | Preview build locally |
+| `npm run setup-db` | Reset local attendee table (destructive) |
+| `npm run migrate-qr` | QR token security migration |
+| `npm run migrate-events` | Event-scoped schema migration |
+| `npm run migrate-organizations` | Organization/membership migration |
+| `npm run migrate-staff-preferences` | Staff preference persistence migration |
+| `npm run wipe-events` | Event wipe utility |
+| `npm run test:edge-cases` | Edge-case test suite (dev server running) |
+| `npm run test:edge-cases:ci` | Start server + run edge-case tests |
+| `npm run test:generate-csvs` | Generate CSV fixtures for import testing |
 
-**Edge-case tests** require auth bypass. Either:
+## Documentation
 
-```bash
-# Single command (recommended; no other dev server should be running)
-npm run test:edge-cases:ci
-```
+- Roadmap + progress: [`docs/MASTER-PLAN.md`](docs/MASTER-PLAN.md)
+- User-facing docs index: [`docs/README.md`](docs/README.md)
+- Deployment: [`docs/VERCEL-DEPLOYMENT.md`](docs/VERCEL-DEPLOYMENT.md)
+- Clerk setup: [`docs/AUTH-CLERK-SETUP.md`](docs/AUTH-CLERK-SETUP.md)
+- Email sender go-live checklist: [`docs/EMAIL-SENDER-GO-LIVE-CHECKLIST.md`](docs/EMAIL-SENDER-GO-LIVE-CHECKLIST.md)
 
-Or with two terminals:
-```bash
-# Terminal 1: start dev server with bypass
-BYPASS_AUTH_FOR_TESTS=true npm run dev
+## Deployment
 
-# Terminal 2: run tests
-BYPASS_AUTH_FOR_TESTS=true npm run test:edge-cases
-```
-
-## Routes
-
-| Path              | Purpose |
-|-------------------|--------|
-| `/`               | Main app (RSVP, Check-in, Admin tabs) |
-| `/scanner`        | Standalone check-in scanner |
-| `GET/POST /api/attendees` | List and create attendees |
-| `DELETE /api/attendees?id=...` | Delete attendee |
-| `POST /api/checkin`       | Mark attendee checked-in (body: `{ id }`) |
-| `GET/POST /api/send-email`| Send/resend QR email to attendee |
-
-## Deploy to Vercel
-
-1. **Connect the repo** in [Vercel](https://vercel.com): New Project → Import this repo. Astro and `vercel.json` are auto-detected.
-
-2. **Set environment variables** in the project (Settings → Environment Variables). Add: `DATABASE_URL`, `RESEND_API_KEY`, `FROM_EMAIL`, `FROM_NAME`.
-
-3. **Create the table** (one-time). After first deploy, run against your production DB:
-   ```bash
-   DATABASE_URL="your-production-url" npm run setup-db
-   ```
-
-4. **Deploy** via push or from the Vercel dashboard. Node 20+, `vercel.json`, and `.vercelignore` are already set.
+Deploy on Vercel. For production setup details and post-deploy verification, use [`docs/VERCEL-DEPLOYMENT.md`](docs/VERCEL-DEPLOYMENT.md).

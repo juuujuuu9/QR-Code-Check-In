@@ -2,7 +2,7 @@
 
 ## Pre-Flight
 - [ ] All files copied to `docs/ui-modernization/`
-- [ ] Cursor rule created at `.cursor/rules/ui-modernization.mdc`
+- [x] Cursor rule created at `.cursor/rules/ui-modernization.mdc`
 - [ ] You have read the component code in `docs/ui-modernization/qr-ui-components.tsx`
 
 ---
@@ -158,13 +158,13 @@
 
 - [ ] No TypeScript errors
 - [ ] Components render without crashing
-- [ ] Status badges show correct colors
-- [ ] Hover actions appear on row hover
-- [ ] Empty state displays when no attendees
-- [ ] Relative timestamps format correctly
-- [ ] Search still filters the list
+- [x] Status badges show correct colors
+- [x] Hover actions appear on row hover
+- [x] Empty state displays when no attendees
+- [x] Relative timestamps format correctly
+- [x] Search still filters the list
 - [ ] Mobile view stacks properly
-- [ ] Dark mode classes work (if implemented)
+- [x] Dark mode classes work (if implemented)
 
 ---
 

@@ -1,8 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { AdminPage } from '../../components/AdminPage';
-import { ThemeToggle } from '../../components/ThemeToggle';
-import { SignOutButton } from '@clerk/astro/components';
+import DashboardHeader from '../../components/DashboardHeader.astro';
 import { getAllEventsForUser, getStaffLastEventId, getEventByIdForUser } from '../../lib/db';
 
 const { user } = Astro.locals;
@@ -33,29 +32,14 @@ const selectedEventId = urlEventId || lastSelectedEventId;
 
 <Layout title="Attendees | Organization">
   <div class="min-h-screen bg-background">
-    <header class="bg-card border-b border-border sticky top-0 z-50">
-      <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
-          <div class="flex items-center gap-3">
-            <a href="/admin" class="flex items-center gap-3">
-              <div class="bg-primary p-2 rounded-lg">
-                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-              </div>
-              <span class="font-bold text-foreground">Dashboard</span>
-            </a>
-          </div>
-          <div class="flex items-center gap-4">
-            <ThemeToggle client:load />
-            <span class="text-sm text-muted-foreground">{user?.email ?? 'Staff'}</span>
-            <SignOutButton asChild redirectUrl="/">
-              <button type="button" class="text-sm text-muted-foreground hover:text-primary bg-transparent border-none cursor-pointer p-0 font-inherit">Sign out</button>
-            </SignOutButton>
-          </div>
-        </div>
-      </div>
-    </header>
+    <DashboardHeader
+      homeHref="/admin"
+      homeLabel="Dashboard"
+      showThemeToggle={true}
+      showSignOut={true}
+      isAdmin={Astro.locals.isAdmin}
+      userEmail={user?.email ?? ''}
+    />
 
     <main class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-8">
       {!hasOrganization && (
@@ -92,4 +76,142 @@ const selectedEventId = urlEventId || lastSelectedEventId;
       )}
     </main>
   </div>
+
+  {Astro.locals.isAdmin && (
+    <>
+      <div
+        id="invite-staff-modal"
+        class="fixed inset-0 z-70 hidden items-center justify-center bg-black/60 px-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="invite-staff-modal-title"
+      >
+        <div class="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-2xl">
+          <h2 id="invite-staff-modal-title" class="text-2xl font-bold text-foreground">Invite user</h2>
+          <p class="mt-1 text-sm text-muted-foreground">Invite a staff member to your workspace by email.</p>
+
+          <form id="invite-staff-form" class="mt-5 space-y-4">
+            <div>
+              <label for="invite-staff-email" class="mb-1 block text-sm font-medium text-foreground">Email</label>
+              <input
+                id="invite-staff-email"
+                type="email"
+                required
+                placeholder="john@example.com"
+                class="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            <p id="invite-staff-status" class="min-h-5 text-sm text-muted-foreground"></p>
+
+            <div class="mt-2 flex gap-3">
+              <button
+                id="cancel-invite-staff-modal"
+                type="button"
+                class="flex-1 rounded-md border border-border bg-muted px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted/80"
+              >
+                Cancel
+              </button>
+              <button
+                id="submit-invite-staff"
+                type="submit"
+                class="flex-1 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+              >
+                Invite
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <script>
+        const modal = document.getElementById('invite-staff-modal');
+        const openButton = document.getElementById('open-invite-staff-modal');
+        const cancelButton = document.getElementById('cancel-invite-staff-modal');
+        const form = document.getElementById('invite-staff-form');
+        const emailInput = document.getElementById('invite-staff-email');
+        const status = document.getElementById('invite-staff-status');
+        const submitButton = document.getElementById('submit-invite-staff');
+
+        const openModal = () => {
+          if (!(modal instanceof HTMLElement)) return;
+          modal.classList.remove('hidden');
+          modal.classList.add('flex');
+          if (emailInput instanceof HTMLInputElement) emailInput.focus();
+          if (status instanceof HTMLElement) {
+            status.textContent = '';
+            status.className = 'min-h-5 text-sm text-muted-foreground';
+          }
+        };
+
+        const closeModal = () => {
+          if (!(modal instanceof HTMLElement)) return;
+          modal.classList.add('hidden');
+          modal.classList.remove('flex');
+          if (form instanceof HTMLFormElement) form.reset();
+          if (status instanceof HTMLElement) {
+            status.textContent = '';
+            status.className = 'min-h-5 text-sm text-muted-foreground';
+          }
+        };
+
+        openButton?.addEventListener('click', openModal);
+        cancelButton?.addEventListener('click', closeModal);
+
+        modal?.addEventListener('click', (event) => {
+          if (event.target === modal) closeModal();
+        });
+
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && modal instanceof HTMLElement && !modal.classList.contains('hidden')) {
+            closeModal();
+          }
+        });
+
+        form?.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          const email = emailInput instanceof HTMLInputElement ? emailInput.value.trim() : '';
+          if (!email) return;
+          if (submitButton instanceof HTMLButtonElement) submitButton.disabled = true;
+          if (status instanceof HTMLElement) {
+            status.textContent = 'Sending invite...';
+            status.className = 'min-h-5 text-sm text-muted-foreground';
+          }
+          try {
+            const res = await fetch('/api/organizations/invitations', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email }),
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              if (status instanceof HTMLElement) {
+                status.textContent = body.error || `Error ${res.status}`;
+                status.className = 'min-h-5 text-sm text-[var(--red-11)]';
+              }
+              return;
+            }
+            if (status instanceof HTMLElement) {
+              if (body?.communication?.sent) {
+                status.textContent = 'Invite email sent.';
+                status.className = 'min-h-5 text-sm text-[var(--green-11)]';
+              } else {
+                const reason = body?.communication?.error || 'Email service is not configured';
+                status.textContent = `Invite created, but email was not sent: ${reason}`;
+                status.className = 'min-h-5 text-sm text-[var(--amber-11)]';
+              }
+            }
+            if (emailInput instanceof HTMLInputElement) emailInput.value = '';
+          } catch {
+            if (status instanceof HTMLElement) {
+              status.textContent = 'Could not send invite';
+              status.className = 'min-h-5 text-sm text-[var(--red-11)]';
+            }
+          } finally {
+            if (submitButton instanceof HTMLButtonElement) submitButton.disabled = false;
+          }
+        });
+      </script>
+    </>
+  )}
 </Layout>

@@ -17,8 +17,8 @@ When you register for an event, you'll receive your QR code in one of these ways
 - The email includes a PNG image you can save or screenshot
 - Show this QR code at check-in
 
-**On the Registration Page:**
-- After submitting the RSVP form, you'll see your QR code displayed
+**On the Registration Confirmation Page (if enabled by your organizer):**
+- After submitting registration, you may see your QR code displayed immediately
 - Tap the QR code for a full-screen version that's easier to scan
 - Take a screenshot or save the image
 
@@ -48,8 +48,8 @@ When you register for an event, you'll receive your QR code in one of these ways
 ### Scanning QR Codes
 
 **Using the Scanner:**
-1. Open the scanner page on your phone
-2. Tap "Start Scanning" to activate the camera
+1. Open the scanner page (`/` or `/scanner`) on your phone
+2. Tap "Start Scanner" to activate the camera
 3. Ask the attendee to show their QR code
 4. Hold your phone 4-6 inches from their screen
 5. You'll hear a sound and see confirmation when it works
@@ -68,10 +68,10 @@ When you register for an event, you'll receive your QR code in one of these ways
 ### Manual Check-In (When QR Won't Scan)
 
 If a QR code won't scan:
-1. Tap "Manual Lookup" on the scanner page
+1. Use the "Or check in by name" search field on the scanner page
 2. Type the attendee's name or email
 3. Tap their name in the results
-4. Tap "Check In"
+4. Tap "Check in"
 
 ### Handling Common Issues
 
@@ -238,7 +238,7 @@ CSV import dedupes by **event + email**:
 
 | Task | How To |
 |------|--------|
-| Register for event | Fill out RSVP form on event page |
+| Register for event | Complete organizer registration flow (CSV import or external form/webhook) |
 | Get QR code | Check email or save from confirmation page |
 | Check in | Show QR to staff scanner |
 | Lost QR code | Ask staff to look you up manually |

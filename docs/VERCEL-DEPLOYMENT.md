@@ -46,7 +46,6 @@ In your Vercel project dashboard, go to **Settings > Environment Variables** and
 | `RESEND_API_KEY` | `re_...` | Resend dashboard → API Keys |
 | `FROM_EMAIL` | `events@yourdomain.com` | Resend verified domain |
 | `FROM_NAME` | `Your Event Name` | Your choice |
-| `CORS_ORIGIN` | `https://yourdomain.com` | Your production URL |
 
 #### Recommended Variables
 
@@ -98,7 +97,8 @@ After setting all environment variables:
 
 Check the following endpoints:
 
-- `https://yourdomain.com` - Main app (RSVP form)
+- `https://yourdomain.com` - Scanner home (standalone check-in UI)
+- `https://yourdomain.com/scanner` - Scanner alias (redirects to `/`)
 - `https://yourdomain.com/login` - Staff login
 - `https://yourdomain.com/admin` - Admin dashboard (requires staff access)
 - `https://yourdomain.com/api/health` - Health check
@@ -107,7 +107,8 @@ Check the following endpoints:
 
 - [ ] Health check returns `{"status":"ok"}`
 - [ ] Authenticated users can log in
-- [ ] RSVP form creates attendees
+- [ ] Event creation works in admin (`/admin/events/new`)
+- [ ] CSV import creates attendees for selected event
 - [ ] QR emails are sent and received
 - [ ] Scanner can check in attendees
 - [ ] CSV import works in admin
