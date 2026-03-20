@@ -24,6 +24,9 @@ const fromEmail = getEnv('FROM_EMAIL') || 'onboarding@resend.dev';
       homeHref="/admin/events"
       homeLabel="Events"
       secondaryLinks={[{ href: '/admin', label: 'Attendees' }]}
+      showSignOut={true}
+      userEmail={Astro.locals.user?.email ?? ''}
+      userRole={Astro.locals.user?.role ?? ''}
     />
 
     <main class="max-w-2xl mx-auto px-2 sm:px-6 lg:px-8 py-8">

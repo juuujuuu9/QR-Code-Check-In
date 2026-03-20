@@ -20,6 +20,7 @@ const memberships = userId ? await getOrganizationMembershipsForUser(userId) : [
       showSignOut={true}
       isAdmin={Astro.locals.isAdmin}
       userEmail={Astro.locals.user?.email ?? ''}
+      userRole={Astro.locals.user?.role ?? ''}
       inviteButtonId="open-invite-staff-modal-header"
       secondaryLinks={[{ href: '/admin/organization', label: 'Organization' }]}
     />

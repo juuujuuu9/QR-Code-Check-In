@@ -529,6 +529,33 @@ export async function revokeOrganizationInvitation(
   return rows.length > 0;
 }
 
+export async function getInvitationByToken(token: string): Promise<{
+  email: string;
+  organizationName: string;
+  role: OrganizationRole;
+  status: OrganizationInvitationRow['status'];
+  expiresAt: string;
+} | null> {
+  if (!token) return null;
+  const db = getDb();
+  const rows = await db`
+    SELECT i.email, i.role, i.status, i.expires_at, o.name AS organization_name
+    FROM organization_invitations i
+    INNER JOIN organizations o ON o.id = i.organization_id
+    WHERE i.token = ${token}
+    LIMIT 1
+  `;
+  if (!rows.length) return null;
+  const row = rows[0] as Record<string, unknown>;
+  return {
+    email: String(row.email),
+    organizationName: String(row.organization_name),
+    role: row.role as OrganizationRole,
+    status: row.status as OrganizationInvitationRow['status'],
+    expiresAt: String(row.expires_at),
+  };
+}
+
 export async function acceptOrganizationInvitation(token: string, userId: string, userEmail: string) {
   const db = getDb();
   const rows = await db`

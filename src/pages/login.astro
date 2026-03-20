@@ -4,6 +4,13 @@ import { SignIn } from '@clerk/astro/components';
 
 const required = Astro.url.searchParams.get('required');
 const error = Astro.url.searchParams.get('error');
+const returnToRaw = Astro.url.searchParams.get('returnTo');
+const safeReturnTo =
+  returnToRaw && returnToRaw.startsWith('/') && !returnToRaw.startsWith('//')
+    ? returnToRaw
+    : '/';
+
+const signUpUrl = `/signup${returnToRaw ? `?returnTo=${encodeURIComponent(safeReturnTo)}` : ''}`;
 
 function canAccessPath(path: string, role: 'organizer' | 'staff' | 'none' | null): boolean {
   if (!role) return false;
@@ -14,15 +21,10 @@ function canAccessPath(path: string, role: 'organizer' | 'staff' | 'none' | null
   return false;
 }
 
-// Check if already signed in and route them to an allowed surface.
 const { userId } = Astro.locals.auth();
 const currentRole = (Astro.locals.user?.role ?? null) as 'organizer' | 'staff' | 'none' | null;
 let blockedSignedIn = false;
 if (userId) {
-  const returnTo = Astro.url.searchParams.get('returnTo') || '/';
-  // Ensure returnTo is a safe relative path
-  const safeReturnTo =
-    returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/';
   if (canAccessPath(safeReturnTo, currentRole)) {
     return Astro.redirect(safeReturnTo);
   }
@@ -73,7 +75,8 @@ if (userId) {
         <>
           <SignIn
             routing="hash"
-            fallbackRedirectUrl="/"
+            fallbackRedirectUrl={safeReturnTo}
+            signUpUrl={signUpUrl}
             appearance={{
               elements: {
                 formButtonPrimary:
@@ -88,13 +91,14 @@ if (userId) {
                 dividerLine: 'bg-border',
                 dividerText: 'text-muted-foreground text-sm',
                 formFieldLabel: 'text-sm font-medium text-foreground',
-                footer: 'hidden', // Hide Clerk branding for cleaner look
+                footer: 'hidden',
               },
             }}
           />
 
           <p class="text-center text-sm text-muted-foreground mt-6">
-            Sign in with any account to access this system.
+            Don't have an account?{' '}
+            <a href={signUpUrl} class="text-primary hover:text-primary/80 font-medium">Sign up</a>
           </p>
         </>
       )}

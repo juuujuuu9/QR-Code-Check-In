@@ -1,74 +1,206 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import { SignUp } from '@clerk/astro/components';
+import { getInvitationByToken, acceptOrganizationInvitation } from '../../lib/db';
 
 const token = Astro.url.searchParams.get('token')?.trim() ?? '';
+const invitation = token ? await getInvitationByToken(token) : null;
+
+const { userId } = Astro.locals.auth();
+const userEmail = Astro.locals.user?.email ?? '';
+
+type PageState =
+  | { kind: 'no_token' }
+  | { kind: 'not_found' }
+  | { kind: 'expired' }
+  | { kind: 'already_accepted' }
+  | { kind: 'email_mismatch'; inviteEmail: string }
+  | { kind: 'accept'; inviteEmail: string; organizationName: string }
+  | { kind: 'signup'; inviteEmail: string; organizationName: string; role: string };
+
+let state: PageState;
+
+if (!token) {
+  state = { kind: 'no_token' };
+} else if (!invitation) {
+  state = { kind: 'not_found' };
+} else if (invitation.status !== 'pending') {
+  state = { kind: 'already_accepted' };
+} else if (new Date(invitation.expiresAt) < new Date()) {
+  state = { kind: 'expired' };
+} else if (userId) {
+  // Authenticated — try to auto-accept
+  if (userEmail.toLowerCase() === invitation.email.toLowerCase()) {
+    const result = await acceptOrganizationInvitation(token, userId, userEmail);
+    if (result.ok) {
+      return Astro.redirect('/admin');
+    }
+    // Shouldn't happen given checks above, but handle gracefully
+    state = { kind: 'accept', inviteEmail: invitation.email, organizationName: invitation.organizationName };
+  } else {
+    state = { kind: 'email_mismatch', inviteEmail: invitation.email };
+  }
+} else {
+  // Not authenticated — show sign-up form
+  state = {
+    kind: 'signup',
+    inviteEmail: invitation.email,
+    organizationName: invitation.organizationName,
+    role: invitation.role,
+  };
+}
+
+const acceptUrl = `/invite/accept?token=${encodeURIComponent(token)}`;
+const signInUrl = `/login?returnTo=${encodeURIComponent(acceptUrl)}`;
 ---
 
 <Layout title="Accept Invitation">
-  <div class="min-h-screen bg-background">
-    <main class="mx-auto max-w-xl px-4 py-10">
-      <h1 class="text-2xl font-bold text-foreground">Accept staff invitation</h1>
-      <p class="mt-2 text-sm text-muted-foreground">
-        Confirm access to your organization dashboard and scanner surfaces.
-      </p>
+  <div class="min-h-screen flex items-center justify-center bg-background px-8">
+    <div class="max-w-md w-full bg-card p-8 rounded-lg shadow-md border border-border">
 
-      {!token ? (
-        <div class="mt-6 rounded-lg border border-[var(--red-6)] bg-[var(--red-2)] p-4 text-[var(--red-11)]">
-          Missing invitation token. Use the link from your invitation email.
+      {state.kind === 'no_token' && (
+        <div class="text-center">
+          <h1 class="text-2xl font-bold text-foreground mb-4">Invalid Link</h1>
+          <p class="text-muted-foreground">Missing invitation token. Use the link from your invitation email.</p>
         </div>
-      ) : (
-        <div class="mt-6 rounded-lg border border-border bg-card p-6">
-          <p class="text-sm text-muted-foreground">Signed in as <span class="font-medium text-foreground">{Astro.locals.user?.email ?? 'your account'}</span></p>
-          <p id="status" class="mt-3 text-sm text-muted-foreground">Ready to accept invitation.</p>
+      )}
+
+      {state.kind === 'not_found' && (
+        <div class="text-center">
+          <h1 class="text-2xl font-bold text-foreground mb-4">Invitation Not Found</h1>
+          <p class="text-muted-foreground">This invitation doesn't exist or has already been used.</p>
+        </div>
+      )}
+
+      {state.kind === 'expired' && (
+        <div class="text-center">
+          <h1 class="text-2xl font-bold text-foreground mb-4">Invitation Expired</h1>
+          <p class="text-muted-foreground">This invitation has expired. Ask your organization admin to send a new one.</p>
+        </div>
+      )}
+
+      {state.kind === 'already_accepted' && (
+        <div class="text-center">
+          <h1 class="text-2xl font-bold text-foreground mb-4">Already Accepted</h1>
+          <p class="text-muted-foreground mb-6">This invitation has already been accepted.</p>
+          <a
+            href="/admin"
+            class="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Go to dashboard
+          </a>
+        </div>
+      )}
+
+      {state.kind === 'email_mismatch' && (
+        <div class="text-center">
+          <h1 class="text-2xl font-bold text-foreground mb-4">Wrong Account</h1>
+          <p class="text-muted-foreground mb-2">
+            This invitation is for <span class="font-medium text-foreground">{state.inviteEmail}</span>
+          </p>
+          <p class="text-muted-foreground mb-6">
+            You're signed in with a different email. Sign out and try again with the correct account.
+          </p>
+          <a
+            href={`/api/auth/signout?callbackUrl=${encodeURIComponent(acceptUrl)}`}
+            class="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Sign out and try again
+          </a>
+        </div>
+      )}
+
+      {state.kind === 'accept' && (
+        <div class="text-center">
+          <h1 class="text-2xl font-bold text-foreground mb-2">Join {state.organizationName}</h1>
+          <p class="text-sm text-muted-foreground mb-4">
+            Signed in as <span class="font-medium text-foreground">{state.inviteEmail}</span>
+          </p>
+          <p id="status" class="text-sm text-muted-foreground mb-4">Ready to accept invitation.</p>
           <button
             id="accept-btn"
             type="button"
-            class="mt-4 inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            class="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             Accept invitation
           </button>
         </div>
       )}
-    </main>
+
+      {state.kind === 'signup' && (
+        <>
+          <h1 class="text-2xl font-bold mb-2 text-center text-foreground">
+            Join {state.organizationName}
+          </h1>
+          <p class="text-muted-foreground text-center mb-1">
+            You've been invited as <span class="font-medium text-foreground">{state.role}</span>.
+          </p>
+          <p class="text-muted-foreground text-center mb-6 text-sm">
+            Create an account with <span class="font-medium text-foreground">{state.inviteEmail}</span> to accept.
+          </p>
+
+          <SignUp
+            routing="hash"
+            fallbackRedirectUrl={acceptUrl}
+            signInUrl={signInUrl}
+            initialValues={{ emailAddress: state.inviteEmail }}
+            appearance={{
+              elements: {
+                formButtonPrimary:
+                  'bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md font-medium transition-colors',
+                formFieldInput:
+                  'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+                card: 'shadow-none border-0 bg-transparent',
+                headerTitle: 'hidden',
+                headerSubtitle: 'hidden',
+                socialButtonsBlockButton:
+                  'flex items-center justify-center gap-2 px-4 py-3 border border-border rounded-lg hover:bg-muted transition-colors cursor-pointer font-medium text-foreground',
+                dividerLine: 'bg-border',
+                dividerText: 'text-muted-foreground text-sm',
+                formFieldLabel: 'text-sm font-medium text-foreground',
+                footer: 'hidden',
+              },
+            }}
+          />
+
+          <p class="text-center text-sm text-muted-foreground mt-6">
+            Already have an account?{' '}
+            <a href={signInUrl} class="text-primary hover:text-primary/80 font-medium">Sign in</a>
+          </p>
+        </>
+      )}
+    </div>
   </div>
 
-  <script define:vars={{ token }}>
-    const btn = document.getElementById('accept-btn');
-    const status = document.getElementById('status');
-    btn?.addEventListener('click', async () => {
-      if (!token) return;
-      if (btn instanceof HTMLButtonElement) btn.disabled = true;
-      if (status) {
-        status.textContent = 'Accepting invitation...';
-        status.className = 'mt-3 text-sm text-muted-foreground';
-      }
-      try {
-        const res = await fetch('/api/organizations/invitations/accept', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
-        });
-        const body = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          if (status) {
-            status.textContent = body.error || `Error ${res.status}`;
-            status.className = 'mt-3 text-sm text-[var(--red-11)]';
+  {state.kind === 'accept' && (
+    <script define:vars={{ token }}>
+      const btn = document.getElementById('accept-btn');
+      const status = document.getElementById('status');
+      btn?.addEventListener('click', async () => {
+        if (!token) return;
+        if (btn instanceof HTMLButtonElement) btn.disabled = true;
+        if (status) {
+          status.textContent = 'Accepting invitation...';
+        }
+        try {
+          const res = await fetch('/api/organizations/invitations/accept', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            if (status) status.textContent = body.error || `Error ${res.status}`;
+            return;
           }
-          return;
+          if (status) status.textContent = 'Invitation accepted! Redirecting...';
+          window.location.href = '/admin';
+        } catch {
+          if (status) status.textContent = 'Could not accept invitation. Please try again.';
+        } finally {
+          if (btn instanceof HTMLButtonElement) btn.disabled = false;
         }
-        if (status) {
-          status.textContent = 'Invitation accepted. Redirecting...';
-          status.className = 'mt-3 text-sm text-[var(--green-11)]';
-        }
-        window.location.href = '/admin';
-      } catch {
-        if (status) {
-          status.textContent = 'Could not accept invitation';
-          status.className = 'mt-3 text-sm text-[var(--red-11)]';
-        }
-      } finally {
-        if (btn instanceof HTMLButtonElement) btn.disabled = false;
-      }
-    });
-  </script>
+      });
+    </script>
+  )}
 </Layout>

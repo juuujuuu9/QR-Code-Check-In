@@ -1,0 +1,56 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { SignUp } from '@clerk/astro/components';
+
+const returnToRaw = Astro.url.searchParams.get('returnTo');
+const safeReturnTo =
+  returnToRaw && returnToRaw.startsWith('/') && !returnToRaw.startsWith('//')
+    ? returnToRaw
+    : '/';
+
+const signInUrl = `/login${returnToRaw ? `?returnTo=${encodeURIComponent(safeReturnTo)}` : ''}`;
+
+const { userId } = Astro.locals.auth();
+if (userId) {
+  return Astro.redirect(safeReturnTo);
+}
+---
+
+<Layout title="Sign Up | Staff Access">
+  <div class="min-h-screen flex items-center justify-center bg-background px-8">
+    <div class="max-w-md w-full bg-card p-8 rounded-lg shadow-md border border-border">
+      <h1 class="text-2xl font-bold mb-2 text-center text-foreground">Create Account</h1>
+      <p class="text-muted-foreground text-center mb-6">
+        Sign up to continue.
+      </p>
+
+      <SignUp
+        routing="hash"
+        fallbackRedirectUrl={safeReturnTo}
+        signInUrl={signInUrl}
+        appearance={{
+          elements: {
+            formButtonPrimary:
+              'bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md font-medium transition-colors',
+            formFieldInput:
+              'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+            card: 'shadow-none border-0 bg-transparent',
+            headerTitle: 'hidden',
+            headerSubtitle: 'hidden',
+            socialButtonsBlockButton:
+              'flex items-center justify-center gap-2 px-4 py-3 border border-border rounded-lg hover:bg-muted transition-colors cursor-pointer font-medium text-foreground',
+            dividerLine: 'bg-border',
+            dividerText: 'text-muted-foreground text-sm',
+            formFieldLabel: 'text-sm font-medium text-foreground',
+            footer: 'hidden',
+          },
+        }}
+      />
+
+      <p class="text-center text-sm text-muted-foreground mt-6">
+        Already have an account?{' '}
+        <a href={signInUrl} class="text-primary hover:text-primary/80 font-medium">Sign in</a>
+      </p>
+    </div>
+  </div>
+</Layout>

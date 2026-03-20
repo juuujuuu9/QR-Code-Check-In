@@ -15,6 +15,7 @@ interface Props {
   showSignOut?: boolean;
   isAdmin?: boolean;
   userEmail?: string;
+  userRole?: string;
   inviteButtonId?: string;
 }
 
@@ -26,8 +27,11 @@ const {
   showSignOut = false,
   isAdmin = false,
   userEmail = '',
+  userRole = '',
   inviteButtonId = 'open-invite-staff-modal',
 } = Astro.props;
+
+const roleLabel = userRole === 'organizer' ? 'Organizer' : userRole === 'staff' ? 'Staff' : '';
 ---
 
 <header class="bg-card border-b border-border sticky top-0 z-50">
@@ -48,8 +52,18 @@ const {
       </div>
       {(showThemeToggle || showSignOut || isAdmin || userEmail) && (
         <div class="flex items-center gap-4">
+          {userEmail && (
+            <div class="flex items-center gap-2 text-sm">
+              <span class="text-muted-foreground">{userEmail}</span>
+              {roleLabel && (
+                <span class="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  {roleLabel}
+                </span>
+              )}
+            </div>
+          )}
           {showThemeToggle && <ThemeToggle client:load />}
-          {isAdmin ? (
+          {isAdmin && (
             <button
               id={inviteButtonId}
               type="button"
@@ -57,8 +71,6 @@ const {
             >
               Invite Staff
             </button>
-          ) : (
-            userEmail && <span class="text-sm text-muted-foreground">{userEmail}</span>
           )}
           {showSignOut && (
             <SignOutButton asChild redirectUrl="/">

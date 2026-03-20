@@ -1,10 +1,12 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/astro/server';
+import { clerkMiddleware, createRouteMatcher, clerkClient } from '@clerk/astro/server';
 import { getUserAccessSummary } from './lib/db';
 
 // Routes that never require authentication.
 // Everything else requires sign-in; org/event scope is enforced per page/API.
 const isPublicRoute = createRouteMatcher([
   '/login',
+  '/signup',
+  '/invite/accept',
   '/api/webhooks/(.*)',
   '/api/health',
   '/api/auth/(.*)',
@@ -20,9 +22,19 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
   const pathname = url.pathname;
 
   // Get email from session claims (provider-dependent key naming)
-  const email =
+  let email =
     (sessionClaims?.email as string | undefined) ??
     (sessionClaims?.email_address as string | undefined);
+
+  // Fallback: fetch user from Clerk if email not in session claims
+  if (userId && !email) {
+    try {
+      const user = await clerkClient(context).users.getUser(userId);
+      email = user.primaryEmailAddress?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? null;
+    } catch {
+      // Ignore errors, email will remain null
+    }
+  }
 
   const summary = userId
     ? await getUserAccessSummary(userId)
