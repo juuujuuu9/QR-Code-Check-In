@@ -112,11 +112,12 @@ export const POST: APIRoute = async (context) => {
     const { qrData, scannerDeviceId } = validation.data;
 
     // Demo codes: canned responses for staff testing (never touch DB).
-    // Disabled in production to prevent forged check-ins.
+    // Disabled in production by default to prevent forged check-ins.
+    // Set ENABLE_DEMO_CODES=true to enable on production for staff training.
     const normalized = qrData.replace(/\uFEFF/g, '').trim();
-    // Support both Astro's import.meta.env.PROD and standard NODE_ENV
     const isProduction = import.meta.env.PROD || process.env.NODE_ENV === 'production';
-    if (!isProduction) {
+    const demoCodesEnabled = !isProduction || process.env.ENABLE_DEMO_CODES === 'true';
+    if (demoCodesEnabled) {
       const demoResponses: Record<string, { body: object; status?: number }> = {
         'DEMO-SUCCESS': {
           body: {
@@ -142,7 +143,7 @@ export const POST: APIRoute = async (context) => {
       };
       const demo = demoResponses[normalized];
       if (demo) {
-        console.log('[Demo Check-In]', normalized, '- triggered in non-production environment');
+        console.log('[Demo Check-In]', normalized, isProduction ? '- triggered (ENABLE_DEMO_CODES override)' : '- triggered in dev environment');
         logCheckInAttempt({ ip, outcome: `demo_${normalized.toLowerCase().replace('demo-', '')}` as any });
         return json(demo.body, demo.status ?? 200);
       }
