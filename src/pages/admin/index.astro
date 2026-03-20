@@ -1,27 +1,83 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import DashboardHeader from '../../components/DashboardHeader.astro';
-import { getAllOrganizationsForUser, getEventForOrganization, type OrganizationWithRole } from '../../lib/db';
+import { AdminPage } from '../../components/AdminPage';
+import {
+  getAllOrganizationsForUser,
+  getEventForOrganization,
+  getEventByIdForUser,
+  getAllEventsForUser,
+  getAllAttendeesForUser,
+  getOrganizationById,
+  type OrganizationWithRole,
+} from '../../lib/db';
 
 const { user } = Astro.locals;
 const userId = user?.id ?? '';
+const eventIdParam = Astro.url.searchParams.get('event')?.trim() ?? '';
 
-// Fetch all organizations for this user
-const organizations = userId ? await getAllOrganizationsForUser(userId) : [];
+type EventRow = NonNullable<Awaited<ReturnType<typeof getEventByIdForUser>>>;
 
-// Fetch events count for each organization
-const organizationsWithEvents = await Promise.all(
-  organizations.map(async (org) => {
-    const event = await getEventForOrganization(org.id);
-    return {
-      ...org,
-      hasEvent: !!event,
-      eventName: event?.name ?? null,
-    };
-  })
-);
+let showEventDashboard = false;
+let event: EventRow | null = null;
+let eventOptions: { id: string; name: string; slug: string }[] = [];
+let initialAttendees: import('../../types/attendee').Attendee[] = [];
+let organization: Awaited<ReturnType<typeof getOrganizationById>> = null;
+let canManageOrganization = false;
 
-// Format date relative (e.g., "7d ago")
+if (eventIdParam) {
+  const ev = userId ? await getEventByIdForUser(eventIdParam, userId) : null;
+  if (!ev) {
+    return Astro.redirect('/admin/events');
+  }
+  showEventDashboard = true;
+  event = ev;
+
+  const events = userId ? await getAllEventsForUser(userId) : [];
+  eventOptions = events.map((e) => ({ id: e.id, name: e.name, slug: e.slug }));
+
+  organization = ev.organizationId ? await getOrganizationById(ev.organizationId) : null;
+  const dbAttendees = userId ? await getAllAttendeesForUser(userId, eventIdParam) : [];
+
+  initialAttendees = dbAttendees.map((a) => ({
+    id: a.id,
+    firstName: a.firstName,
+    lastName: a.lastName,
+    email: a.email,
+    phone: a.phone ?? undefined,
+    company: a.company ?? undefined,
+    dietaryRestrictions: a.dietaryRestrictions ?? undefined,
+    checkedIn: a.checkedIn,
+    checkedInAt: a.checkedInAt ?? undefined,
+    rsvpAt: a.rsvpAt,
+    qrExpiresAt: a.qrExpiresAt ?? undefined,
+    qrUsedAt: a.qrUsedAt ?? undefined,
+    qrUsedByDevice: a.qrUsedByDevice ?? undefined,
+    eventId: a.eventId ?? undefined,
+    micrositeEntryId: a.micrositeEntryId ?? undefined,
+    sourceData: a.sourceData ?? undefined,
+    createdAt: a.createdAt,
+  }));
+
+  canManageOrganization = Astro.locals.isAdmin || organization?.ownerUserId === userId;
+}
+
+const organizations = !showEventDashboard && userId ? await getAllOrganizationsForUser(userId) : [];
+
+const organizationsWithEvents =
+  !showEventDashboard && organizations.length > 0
+    ? await Promise.all(
+        organizations.map(async (org) => {
+          const ev = await getEventForOrganization(org.id);
+          return {
+            ...org,
+            hasEvent: !!ev,
+            eventName: ev?.name ?? null,
+          };
+        })
+      )
+    : [];
+
 function formatRelativeDate(dateString: string | undefined): string {
   if (!dateString) return 'Recently';
   const date = new Date(dateString);
@@ -35,99 +91,178 @@ function formatRelativeDate(dateString: string | undefined): string {
   if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
   return `${Math.floor(diffDays / 30)}mo ago`;
 }
+
+const pageTitle = showEventDashboard && event ? `${event.name} | Attendees` : 'Dashboard | Organizations';
 ---
 
-<Layout title="Dashboard | Organizations">
-  <div class="min-h-screen bg-background">
-    <DashboardHeader
-      homeHref="/admin"
-      homeLabel="Dashboard"
-      showThemeToggle={true}
-      showSignOut={true}
-      isAdmin={Astro.locals.isAdmin}
-      userEmail={user?.email ?? ''}
-      userRole={user?.role ?? ''}
-    />
+<Layout title={pageTitle}>
+  {showEventDashboard && event ? (
+    <div class="min-h-screen bg-background">
+      <DashboardHeader
+        homeHref="/admin"
+        homeLabel="Dashboard"
+        showThemeToggle={true}
+        showSignOut={true}
+        isAdmin={Astro.locals.isAdmin}
+        userEmail={user?.email ?? ''}
+        userRole={user?.role ?? ''}
+        organization={organization ? { label: organization.name, href: '/admin/organization' } : undefined}
+        event={{ label: event.name, badge: 'Attendees' }}
+      />
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 class="text-2xl font-bold text-foreground mb-6">Organizations</h1>
-
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {/* Create Organization Card */}
-        <a
-          href="/onboarding/organization"
-          class="group flex flex-col items-center justify-center min-h-[180px] rounded-xl border border-dashed border-border bg-card/50 hover:bg-card hover:border-primary/50 transition-all"
-        >
-          <div class="flex items-center justify-center w-10 h-10 rounded-full bg-muted mb-3 group-hover:bg-primary/10 transition-colors">
-            <svg class="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-          </div>
-          <span class="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Create organization</span>
-        </a>
-
-          {/* Organization Cards */}
-        {organizationsWithEvents.map((org) => (
-          <a
-            href={`/admin/organization?id=${org.id}`}
-            class="group flex flex-col rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all"
-          >
-            {/* Top accent line */}
-            <div class="h-1 w-full bg-gradient-to-r from-primary/60 to-primary rounded-t-xl" />
-
-            <div class="p-4 flex flex-col flex-1">
-              {/* Organization icon, domain, and role badge */}
-              <div class="flex items-start justify-between mb-3">
-                <div class="flex items-center gap-2">
-                  <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-muted">
-                    <svg class="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                  </div>
-                  <span class="text-xs text-muted-foreground font-mono truncate max-w-[140px]">{org.id.slice(0, 8)}...</span>
-                </div>
-                <span class={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                  (org as OrganizationWithRole).userRole === 'organizer'
-                    ? 'bg-purple-500/10 text-purple-600'
-                    : 'bg-blue-500/10 text-blue-600'
-                }`}>
-                  {(org as OrganizationWithRole).userRole === 'organizer' ? 'Organizer' : 'Staff'}
-                </span>
+      <div class="flex min-h-[calc(100vh-4rem)]">
+        {/* Sidebar Navigation */}
+        <aside class="w-64 border-r border-border bg-card hidden md:block">
+          <nav class="p-4 space-y-1">
+            <a
+              href={`/admin?event=${event.id}`}
+              class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md bg-primary/10 text-primary"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              Attendees
+            </a>
+            <a
+              href={`/admin/events/import?event=${event.id}`}
+              class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Import
+            </a>
+            <a
+              href={`/api/attendees/export?eventId=${event.id}`}
+              class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Export
+            </a>
+            <a
+              href={`/admin/events/edit?event=${event.id}`}
+              class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Settings
+            </a>
+            {organization && (
+              <div class="pt-4 mt-4 border-t border-border">
+                <a
+                  href="/admin/organization"
+                  class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                >
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  Back to Organization
+                </a>
               </div>
+            )}
+          </nav>
+        </aside>
 
-              {/* Organization name */}
-              <h3 class="text-base font-semibold text-foreground mb-4">{org.name}</h3>
-
-              {/* Status badge */}
-              <div class="mt-auto">
-                {org.hasEvent ? (
-                  <span class="inline-flex items-center gap-1.5 rounded-md bg-green-500/10 px-2 py-1 text-xs font-medium text-green-600">
-                    <span class="h-1.5 w-1.5 rounded-full bg-green-500" />
-                    Active
-                  </span>
-                ) : (
-                  <span class="inline-flex items-center gap-1.5 rounded-md bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-600">
-                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    No Event
-                  </span>
-                )}
-              </div>
-
-              {/* Updated time */}
-              <p class="mt-3 text-xs text-muted-foreground">Updated {formatRelativeDate(org.createdAt)}</p>
-            </div>
-          </a>
-        ))}
+        <main class="flex-1 px-4 py-8">
+          <AdminPage
+            client:load
+            events={eventOptions}
+            selectedEventId={eventIdParam}
+            initialAttendees={initialAttendees}
+            canManageOrganization={canManageOrganization}
+          />
+        </main>
       </div>
+    </div>
+  ) : (
+    <div class="min-h-screen bg-background">
+      <DashboardHeader
+        homeHref="/admin"
+        homeLabel="Dashboard"
+        showThemeToggle={true}
+        showSignOut={true}
+        isAdmin={Astro.locals.isAdmin}
+        userEmail={user?.email ?? ''}
+        userRole={user?.role ?? ''}
+      />
 
-      {/* Empty state - no organizations */}
-      {organizationsWithEvents.length === 0 && (
-        <div class="mt-8 text-center">
-          <p class="text-muted-foreground">No organizations yet. Create your first one to get started.</p>
+      <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 class="text-2xl font-bold text-foreground mb-6">Organizations</h1>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <a
+            href="/onboarding/organization"
+            class="group flex flex-col items-center justify-center min-h-[180px] rounded-xl border border-dashed border-border bg-card/50 hover:bg-card hover:border-primary/50 transition-all"
+          >
+            <div class="flex items-center justify-center w-10 h-10 rounded-full bg-muted mb-3 group-hover:bg-primary/10 transition-colors">
+              <svg class="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            <span class="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Create organization</span>
+          </a>
+
+          {organizationsWithEvents.map((org) => (
+            <a
+              href={`/admin/organization?id=${org.id}`}
+              class="group flex flex-col rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all"
+            >
+              <div class="h-1 w-full bg-gradient-to-r from-primary/60 to-primary rounded-t-xl" />
+
+              <div class="p-4 flex flex-col flex-1">
+                <div class="flex items-start justify-between mb-3">
+                  <div class="flex items-center gap-2">
+                    <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-muted">
+                      <svg class="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                    </div>
+                    <span class="text-xs text-muted-foreground font-mono truncate max-w-[140px]">{org.id.slice(0, 8)}...</span>
+                  </div>
+                  <span class={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                    (org as OrganizationWithRole).userRole === 'organizer'
+                      ? 'bg-purple-500/10 text-purple-600'
+                      : 'bg-blue-500/10 text-blue-600'
+                  }`}>
+                    {(org as OrganizationWithRole).userRole === 'organizer' ? 'Organizer' : 'Staff'}
+                  </span>
+                </div>
+
+                <h3 class="text-base font-semibold text-foreground mb-4">{org.name}</h3>
+
+                <div class="mt-auto">
+                  {org.hasEvent ? (
+                    <span class="inline-flex items-center gap-1.5 rounded-md bg-green-500/10 px-2 py-1 text-xs font-medium text-green-600">
+                      <span class="h-1.5 w-1.5 rounded-full bg-green-500" />
+                      Active
+                    </span>
+                  ) : (
+                    <span class="inline-flex items-center gap-1.5 rounded-md bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-600">
+                      <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      No Event
+                    </span>
+                  )}
+                </div>
+
+                <p class="mt-3 text-xs text-muted-foreground">Updated {formatRelativeDate(org.createdAt)}</p>
+              </div>
+            </a>
+          ))}
         </div>
-      )}
-    </main>
-  </div>
+
+        {organizationsWithEvents.length === 0 && (
+          <div class="mt-8 text-center">
+            <p class="text-muted-foreground">No organizations yet. Create your first one to get started.</p>
+          </div>
+        )}
+      </main>
+    </div>
+  )}
 </Layout>

@@ -374,6 +374,13 @@ export async function getEventForOrganization(organizationId: string): Promise<E
   return rows.length ? rowToEvent(rows[0] as Record<string, unknown>) : null;
 }
 
+export async function getEventsForOrganization(organizationId: string): Promise<EventRow[]> {
+  if (!organizationId) return [];
+  const db = getDb();
+  const rows = await db`SELECT * FROM events WHERE organization_id = ${organizationId} ORDER BY created_at DESC`;
+  return rows.map((r) => rowToEvent(r as Record<string, unknown>));
+}
+
 export async function canUserAccessEvent(userId: string, eventId: string): Promise<boolean> {
   if (!userId || !eventId) return false;
   const db = getDb();

@@ -35,8 +35,8 @@ const existingEvent = organization ? await getEventForOrganization(organization.
         <div class="mb-6 rounded-lg border border-[var(--amber-6)] bg-[var(--amber-2)] p-4 text-[var(--amber-11)]">
           <p class="font-medium">Event limit reached</p>
           <p class="mt-1 text-sm">This organization already has an event. Multi-event access is planned for a future paid tier.</p>
-          <a href="/admin/events" class="mt-3 inline-flex rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-            Back to events
+          <a href="/admin/organization" class="mt-3 inline-flex rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+            Back to Organization
           </a>
         </div>
       )}
@@ -83,7 +83,7 @@ const existingEvent = organization ? await getEventForOrganization(organization.
           >
             Create event
           </button>
-          <a href="/admin/events" class="rounded border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
+          <a href="/admin/organization" class="rounded border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
             Cancel
           </a>
         </div>

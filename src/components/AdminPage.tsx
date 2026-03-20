@@ -93,7 +93,6 @@ export function AdminPage({
       // Non-blocking; page will still work
     }
 
-    // Update URL for shareability
     const params = new URLSearchParams(window.location.search);
     if (newEventId) {
       params.set('event', newEventId);
@@ -117,7 +116,7 @@ export function AdminPage({
             />
           </div>
           <a
-            href="/admin/events"
+            href="/admin/organization"
             className="rounded border border-border bg-muted px-3 py-2 text-sm font-medium text-foreground hover:bg-accent"
           >
             Manage events
