@@ -2,7 +2,7 @@
 
 **Purpose:** Single source of truth for development progress. Use as the dev checklist; update when completing work; reference from other docs. Feeds into later documentation.
 
-**Last updated:** 2026-03-18 (Cross-checked roadmap against implementation; updated scanner/QR hardening statuses and edge-case subtask notes)
+**Last updated:** 2026-03-19 (Bloat audit completed: ~500 lines removed, demo-codes security fix, structural improvements)
 
 ---
 
@@ -43,6 +43,7 @@
 | Hardware scanner (keyboard wedge) | Missing | No hidden input for laser scanners. |
 | Stolen screenshot / scan count | Partial | Option A is implemented (clear already-checked-in guidance in scanner); Option B (duplicate scan counters in DB/admin) is still pending. |
 | Brightness / high-contrast QR | **Done** | Explicit black/white QR colors + `errorCorrectionLevel: 'H'` in `src/config/qr.ts`; scanner guidance includes attendee brightness reminder. |
+| Demo check-in codes gated | **Done** | Demo codes (`DEMO-SUCCESS`/`DEMO-ALREADY`/`DEMO-INVALID`) gated behind `!import.meta.env.PROD` in `api/checkin.ts`. |
 | Debug code in production | **Done** | Removed agent log fetch calls from CheckInScanner.tsx. |
 | Auth bypass vulnerability | **Done** | Added NODE_ENV check to test bypass in middleware.ts. |
 | Input validation | **Done** | Added zod validation for email, forms, check-ins. |
@@ -62,7 +63,7 @@
 | Rate limiting on RSVP/webhook | **Done** | `lib/rate-limit.ts`; 20/min attendees, 60/min webhook; checkin unchanged (5/min). |
 | Scanner debounce (150ms→500ms) | **Done** | `config/qr.ts` debounceMs: 500; CheckInScanner uses it. |
 | QR error correction H | **Done** | `config/qr.ts`; webhook email uses QR_GENERATION. |
-| db.ts split | Backlog | 300+ lines; consider lib/db/attendees, events, checkin. |
+| db.ts split | Backlog | ~736 lines across 6 domains; extract to `lib/db/` modules opportunistically when touching a domain. Identified in bloat audit Phase 3. |
 | Real-time sync (multi-staff) | Backlog | Two staff don't see each other's check-ins; optional polling/SSE for admin. |
 | Export/archive before wipe | Backlog | GDPR, data retention; export flow before delete-event. |
 

@@ -7,19 +7,11 @@
  *   node scripts/migrate-events.mjs --dry-run   # preview only
  *   node scripts/migrate-events.mjs             # apply
  */
-import 'dotenv/config';
-import { neon } from '@neondatabase/serverless';
+import { createSql } from './lib/migration-helpers.mjs';
 import crypto from 'crypto';
 
 const DRY_RUN = process.argv.includes('--dry-run');
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  console.error('Missing DATABASE_URL. Set it in .env at project root.');
-  process.exit(1);
-}
-
-const sql = neon(databaseUrl);
+const sql = createSql();
 
 const DEFAULT_EVENT_SLUG = process.env.DEFAULT_EVENT_SLUG || 'default';
 const DEFAULT_EVENT_NAME = 'Demo Event';

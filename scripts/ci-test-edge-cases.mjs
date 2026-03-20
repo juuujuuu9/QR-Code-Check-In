@@ -5,6 +5,7 @@
  * Run with: npm run test:edge-cases:ci
  */
 
+import 'dotenv/config';
 import { spawn } from 'child_process';
 import { setTimeout } from 'timers/promises';
 

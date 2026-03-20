@@ -2,16 +2,9 @@
  * One-time setup: creates attendees table, indexes, optional sample data.
  * Loads DATABASE_URL from .env at project root. Idempotent.
  */
-import 'dotenv/config';
-import { neon } from '@neondatabase/serverless';
+import { createSql } from './lib/migration-helpers.mjs';
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) {
-  console.error('Missing DATABASE_URL. Set it in .env at project root.');
-  process.exit(1);
-}
-
-const sql = neon(databaseUrl);
+const sql = createSql();
 
 async function run(statement) {
   return sql.query(statement, []);

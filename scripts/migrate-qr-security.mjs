@@ -2,17 +2,10 @@
  * One-time migration: add QR token columns and backfill attendee id to UUID.
  * Run after pulling QR security changes. Safe to run multiple times (adds columns if missing; backfills only non-UUID ids).
  */
-import 'dotenv/config';
-import { neon } from '@neondatabase/serverless';
+import { createSql } from './lib/migration-helpers.mjs';
 import crypto from 'crypto';
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) {
-  console.error('Missing DATABASE_URL. Set it in .env at project root.');
-  process.exit(1);
-}
-
-const sql = neon(databaseUrl);
+const sql = createSql();
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
