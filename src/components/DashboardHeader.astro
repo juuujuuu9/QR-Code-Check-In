@@ -27,7 +27,6 @@ interface Props {
   isAdmin?: boolean;
   userEmail?: string;
   userRole?: string;
-  inviteButtonId?: string;
 }
 
 const {
@@ -41,7 +40,6 @@ const {
   isAdmin = false,
   userEmail = '',
   userRole = '',
-  inviteButtonId = 'open-invite-staff-modal',
 } = Astro.props;
 
 const roleLabel = userRole === 'organizer' ? 'Organizer' : userRole === 'staff' ? 'Staff' : '';
@@ -146,9 +144,9 @@ const badgeClasses = {
             </div>
           )}
           {showThemeToggle && <ThemeToggle client:load />}
-          {isAdmin && (
+          {isAdmin && organization && (
             <button
-              id={inviteButtonId}
+              id="open-invite-staff-modal-header"
               type="button"
               class="rounded-md border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
             >
