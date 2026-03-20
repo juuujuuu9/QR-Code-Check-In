@@ -2,6 +2,7 @@
 import Layout from '../../../layouts/Layout.astro';
 import DashboardHeader from '../../../components/DashboardHeader.astro';
 import { getEventByIdForUser, getAllEventsForUser, getOrganizationById } from '../../../lib/db';
+import { getEnv } from '../../../lib/env';
 
 const userId = Astro.locals.user?.id ?? '';
 const eventId = Astro.url.searchParams.get('event')?.trim();
@@ -14,9 +15,7 @@ if (eventId && userId) {
 
 const organization = event?.organizationId ? await getOrganizationById(event.organizationId) : null;
 const organizationName = organization?.name ?? '';
-const fromEmail = (typeof process !== 'undefined' && process.env.FROM_EMAIL)
-  || (typeof import.meta !== 'undefined' && import.meta.env?.FROM_EMAIL)
-  || 'onboarding@resend.dev';
+const fromEmail = getEnv('FROM_EMAIL') || 'onboarding@resend.dev';
 ---
 
 <Layout title="Import CSV">

@@ -1,13 +1,10 @@
 import { Resend } from 'resend';
+import { getEnv } from './env';
 
 let resend: Resend | null = null;
 function getResend() {
   if (!resend) {
-    // On Vercel, process.env is the runtime source of truth
-    const apiKey = (typeof process !== 'undefined' && process.env.RESEND_API_KEY)
-      || (typeof import.meta !== 'undefined' && import.meta.env.RESEND_API_KEY)
-      || '';
-    resend = new Resend(apiKey || 're_placeholder');
+    resend = new Resend(getEnv('RESEND_API_KEY') || 're_placeholder');
   }
   return resend;
 }
@@ -15,14 +12,9 @@ function getResend() {
 const QR_CID = 'qrcode';
 
 function getConfiguredEmailSender() {
-  const apiKey = (typeof process !== 'undefined' && process.env.RESEND_API_KEY)
-    || (typeof import.meta !== 'undefined' && import.meta.env.RESEND_API_KEY);
-  const fromEmail = (typeof process !== 'undefined' && process.env.FROM_EMAIL)
-    || (typeof import.meta !== 'undefined' && import.meta.env.FROM_EMAIL)
-    || 'onboarding@resend.dev';
-  const fromName = (typeof process !== 'undefined' && process.env.FROM_NAME)
-    || (typeof import.meta !== 'undefined' && import.meta.env.FROM_NAME)
-    || 'Event Check-In';
+  const apiKey = getEnv('RESEND_API_KEY');
+  const fromEmail = getEnv('FROM_EMAIL') || 'onboarding@resend.dev';
+  const fromName = getEnv('FROM_NAME') || 'Event Check-In';
   return { apiKey, fromEmail, fromName };
 }
 

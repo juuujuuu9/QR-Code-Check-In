@@ -2,15 +2,12 @@ import type { APIRoute } from 'astro';
 import { getAttendeeByIdForUser } from '../../lib/db';
 import { sendQRCodeEmail } from '../../lib/email';
 import { requireEventManage, requireUserId } from '../../lib/access';
+import { getEnv } from '../../lib/env';
 
 const RESEND_LINK = 'https://resend.com/api-keys';
 
 export const GET: APIRoute = () => {
-  // On Vercel, process.env is the runtime source of truth
-  const configured = Boolean(
-    (typeof process !== 'undefined' && process.env.RESEND_API_KEY)
-    || (typeof import.meta !== 'undefined' && import.meta.env.RESEND_API_KEY)
-  );
+  const configured = Boolean(getEnv('RESEND_API_KEY'));
   return new Response(
     JSON.stringify({ configured, link: RESEND_LINK }),
     { headers: { 'Content-Type': 'application/json' } }

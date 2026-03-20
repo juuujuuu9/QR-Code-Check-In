@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { getEnv } from './env';
 
 type SqlRow = Record<string, unknown>;
 type NeonSql = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<SqlRow[]>;
@@ -7,11 +8,7 @@ let sql: NeonSql | null = null;
 
 function getDb() {
   if (!sql) {
-    // On Vercel, process.env is the only way to access runtime env vars.
-    // import.meta.env is a Vite build-time replacement and won't work for secrets.
-    const url = typeof process !== 'undefined' && process.env.DATABASE_URL
-      ? process.env.DATABASE_URL
-      : (typeof import.meta !== 'undefined' && import.meta.env?.DATABASE_URL);
+    const url = getEnv('DATABASE_URL');
     if (!url || url === 'placeholder') throw new Error('DATABASE_URL is not set');
     sql = neon(url) as unknown as NeonSql;
   }
@@ -331,11 +328,7 @@ export async function getDefaultEventId(): Promise<string> {
   if (defaultEventIdCache && defaultEventIdCache.expiresAt > now) {
     return defaultEventIdCache.id;
   }
-  // On Vercel, process.env is the runtime source of truth for env vars
-  const slug =
-    (typeof process !== 'undefined' && process.env?.DEFAULT_EVENT_SLUG) ||
-    (typeof import.meta !== 'undefined' && import.meta.env?.DEFAULT_EVENT_SLUG) ||
-    'default';
+  const slug = getEnv('DEFAULT_EVENT_SLUG') || 'default';
   const event = await getEventBySlug(slug);
   if (!event) throw new Error('Default event not found. Run npm run migrate-events.');
   defaultEventIdCache = { id: event.id, expiresAt: now + DEFAULT_EVENT_CACHE_TTL_MS };
@@ -398,9 +391,8 @@ export type OfflineCacheAttendee = {
   eventName?: string;
 };
 
-export async function getAttendeesForOfflineCache(eventId?: string): Promise<OfflineCacheAttendee[]> {
-  const db = getDb();
-  const rowToOffline = (row: Record<string, unknown>): OfflineCacheAttendee => ({
+function rowToOffline(row: Record<string, unknown>): OfflineCacheAttendee {
+  return {
     id: row.id as string,
     eventId: (row.event_id ?? '') as string,
     qrToken: (row.qr_token ?? null) as string | null,
@@ -410,7 +402,11 @@ export async function getAttendeesForOfflineCache(eventId?: string): Promise<Off
     lastName: (row.last_name ?? '') as string,
     email: (row.email ?? '') as string,
     eventName: row.event_name as string | undefined,
-  });
+  };
+}
+
+export async function getAttendeesForOfflineCache(eventId?: string): Promise<OfflineCacheAttendee[]> {
+  const db = getDb();
   if (eventId) {
     const rows = await db`
       SELECT a.id, a.event_id, a.qr_token, a.qr_expires_at, a.checked_in,
@@ -438,17 +434,6 @@ export async function getAttendeesForOfflineCacheForUser(
 ): Promise<OfflineCacheAttendee[]> {
   if (!userId) return [];
   const db = getDb();
-  const rowToOffline = (row: Record<string, unknown>): OfflineCacheAttendee => ({
-    id: row.id as string,
-    eventId: (row.event_id ?? '') as string,
-    qrToken: (row.qr_token ?? null) as string | null,
-    qrExpiresAt: (row.qr_expires_at ?? null) as string | null,
-    checkedIn: Boolean(row.checked_in),
-    firstName: (row.first_name ?? '') as string,
-    lastName: (row.last_name ?? '') as string,
-    email: (row.email ?? '') as string,
-    eventName: row.event_name as string | undefined,
-  });
   if (eventId) {
     const rows = await db`
       SELECT a.id, a.event_id, a.qr_token, a.qr_expires_at, a.checked_in,

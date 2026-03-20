@@ -88,48 +88,34 @@ class ApiService {
     });
   }
 
-  async checkInAttendeeById(attendeeId: string): Promise<CheckInResult> {
+  private async postCheckIn(body: Record<string, unknown>): Promise<CheckInResult> {
     const res = await fetch('/api/checkin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ attendeeId }),
+      body: JSON.stringify(body),
     });
-    const body = await res.json().catch(() => ({}));
+    const data = await res.json().catch(() => ({}));
     if (res.ok) {
-      return body as CheckInResult;
+      return data as CheckInResult;
     }
     if (res.status === 409) {
       return {
         success: false,
         alreadyCheckedIn: true,
-        attendee: body.attendee,
-        event: body.event,
-        message: body.message || body.error || 'Already checked in',
+        attendee: data.attendee,
+        event: data.event,
+        message: data.message || data.error || 'Already checked in',
       };
     }
-    throw new Error(body.error || `HTTP ${res.status}`);
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+
+  async checkInAttendeeById(attendeeId: string): Promise<CheckInResult> {
+    return this.postCheckIn({ attendeeId });
   }
 
   async checkInAttendee(qrData: string): Promise<CheckInResult> {
-    const res = await fetch('/api/checkin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ qrData }),
-    });
-    const body = await res.json().catch(() => ({}));
-    if (res.ok) {
-      return body as CheckInResult;
-    }
-    if (res.status === 409) {
-      return {
-        success: false,
-        alreadyCheckedIn: true,
-        attendee: body.attendee,
-        event: body.event,
-        message: body.message || body.error || 'Already checked in',
-      };
-    }
-    throw new Error(body.error || `HTTP ${res.status}`);
+    return this.postCheckIn({ qrData });
   }
 
   async sendEmail(attendeeId: string, qrCodeBase64: string): Promise<void> {

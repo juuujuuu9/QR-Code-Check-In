@@ -1,4 +1,5 @@
 import QRCode from 'qrcode';
+import { QR_GENERATION } from '../config/qr';
 
 interface QRCodeOptions {
   width?: number;
@@ -10,31 +11,20 @@ interface QRCodeOptions {
   };
 }
 
-const DEFAULT_OPTIONS: Required<QRCodeOptions> = {
-  width: 280,
-  margin: 4,
-  errorCorrectionLevel: 'H',
-  color: {
-    dark: '#000000',
-    light: '#FFFFFF',
-  },
-};
-
 /**
  * Generate a QR code as a base64 data URL.
- * This is isomorphic and can run on both server and client.
- * Optimized for phone-to-phone scanning with high contrast colors.
+ * Isomorphic (server + client). All call sites should use this
+ * rather than calling QRCode.toDataURL directly.
  */
 export async function generateQRCodeBase64(
   payload: string,
   options: QRCodeOptions = {}
 ): Promise<string> {
-  const opts = { ...DEFAULT_OPTIONS, ...options };
   return QRCode.toDataURL(payload, {
-    width: opts.width,
-    margin: opts.margin,
-    errorCorrectionLevel: opts.errorCorrectionLevel,
-    color: opts.color,
+    width: options.width ?? QR_GENERATION.width,
+    margin: options.margin ?? QR_GENERATION.margin,
+    errorCorrectionLevel: options.errorCorrectionLevel ?? QR_GENERATION.errorCorrectionLevel,
+    color: options.color ?? QR_GENERATION.color,
     type: 'image/png',
   });
 }

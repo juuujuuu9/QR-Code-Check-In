@@ -14,8 +14,7 @@ import { Calendar, Building2, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Attendee, RSVPFormData } from '@/types/attendee';
 import { apiService } from '@/services/api';
-import { QR_GENERATION } from '@/config/qr';
-import QRCode from 'qrcode';
+import { generateQRCodeBase64 } from '@/lib/qr-client';
 import { QRDisplay } from './QRDisplay';
 
 interface RSVPFormProps {
@@ -68,12 +67,7 @@ export function RSVPForm({ onSuccess }: RSVPFormProps) {
       setNewAttendee(attendee);
 
       const qrPayload = attendee.qrPayload ?? (await apiService.getQRPayload(attendee.id)).qrPayload;
-      const qrCodeDataUrl = await QRCode.toDataURL(qrPayload, {
-        width: QR_GENERATION.width,
-        margin: QR_GENERATION.margin,
-        errorCorrectionLevel: QR_GENERATION.errorCorrectionLevel,
-        color: QR_GENERATION.color,
-      });
+      const qrCodeDataUrl = await generateQRCodeBase64(qrPayload);
       setGeneratedQR(qrCodeDataUrl);
 
       try {

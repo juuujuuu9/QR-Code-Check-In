@@ -6,12 +6,10 @@ import {
 } from '../../../../lib/db';
 import { requireUserId } from '../../../../lib/access';
 import { sendOrganizationInviteEmail } from '../../../../lib/email';
+import { getAppBaseUrl } from '../../../../lib/env';
 
 function getInviteUrl(requestUrl: URL, token: string): string {
-  const appBaseUrl =
-    (typeof process !== 'undefined' && (process.env.APP_URL || process.env.PUBLIC_APP_URL))
-    || ((typeof process !== 'undefined' && process.env.VERCEL_URL) ? `https://${process.env.VERCEL_URL}` : '')
-    || requestUrl.origin;
+  const appBaseUrl = getAppBaseUrl(requestUrl.origin);
   return `${appBaseUrl.replace(/\/$/, '')}/invite/accept?token=${token}`;
 }
 

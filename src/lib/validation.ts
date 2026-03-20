@@ -75,23 +75,10 @@ export const manualCheckInSchema = z.object({
   scannerDeviceId: z.string().max(255).optional().nullable(),
 });
 
-// Webhook entry schema
-export const webhookEntrySchema = z.object({
-  entryId: z.string().min(1).max(255),
-  firstName: nameSchema,
-  lastName: nameSchema,
-  email: emailSchema,
-  phone: phoneSchema,
-  company: companySchema,
-  dietaryRestrictions: dietarySchema,
-  qrUrl: z.string().url().optional().nullable(),
-});
-
 // Type exports
 export type RSVPFormData = z.infer<typeof rsvpFormSchema>;
 export type CheckInData = z.infer<typeof checkInSchema>;
 export type ManualCheckInData = z.infer<typeof manualCheckInSchema>;
-export type WebhookEntryData = z.infer<typeof webhookEntrySchema>;
 
 // Validation helper functions
 export function validateRSVPForm(data: unknown): { success: true; data: RSVPFormData } | { success: false; errors: string[] } {
@@ -118,10 +105,3 @@ export function validateManualCheckIn(data: unknown): { success: true; data: Man
   return { success: false, errors: result.error.errors.map((e) => e.message) };
 }
 
-export function validateWebhookEntry(data: unknown): { success: true; data: WebhookEntryData } | { success: false; errors: string[] } {
-  const result = webhookEntrySchema.safeParse(data);
-  if (result.success) {
-    return { success: true, data: result.data };
-  }
-  return { success: false, errors: result.error.errors.map((e) => e.message) };
-}

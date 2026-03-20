@@ -6,6 +6,7 @@ import {
 } from '../../../lib/db';
 import { requireUserId } from '../../../lib/access';
 import { sendOrganizationInviteEmail } from '../../../lib/email';
+import { getAppBaseUrl } from '../../../lib/env';
 
 const DEFAULT_INVITE_TTL_DAYS = 7;
 
@@ -62,11 +63,7 @@ export const POST: APIRoute = async (context) => {
       expiresAt,
     });
 
-    const requestUrl = new URL(context.request.url);
-    const appBaseUrl =
-      (typeof process !== 'undefined' && (process.env.APP_URL || process.env.PUBLIC_APP_URL))
-      || ((typeof process !== 'undefined' && process.env.VERCEL_URL) ? `https://${process.env.VERCEL_URL}` : '')
-      || requestUrl.origin;
+    const appBaseUrl = getAppBaseUrl(new URL(context.request.url).origin);
     const inviteUrl = `${appBaseUrl.replace(/\/$/, '')}/invite/accept?token=${invitation.token}`;
 
     const emailResult = await sendOrganizationInviteEmail({

@@ -42,8 +42,7 @@ import { toast } from 'sonner';
 import Fuse from 'fuse.js';
 import type { Attendee } from '@/types/attendee';
 import { apiService } from '@/services/api';
-import { QR_GENERATION } from '@/config/qr';
-import QRCode from 'qrcode';
+import { generateQRCodeBase64 } from '@/lib/qr-client';
 import { QRDisplay } from './QRDisplay';
 
 function formatNameLastFirst(attendee: Attendee): string {
@@ -196,12 +195,7 @@ export function AdminDashboard({
 
   const loadQRForAttendee = async (attendee: Attendee) => {
     const { qrPayload } = await apiService.getQRPayload(attendee.id);
-    const url = await QRCode.toDataURL(qrPayload, {
-      width: QR_GENERATION.width,
-      margin: QR_GENERATION.margin,
-      errorCorrectionLevel: QR_GENERATION.errorCorrectionLevel,
-      color: QR_GENERATION.color,
-    });
+    const url = await generateQRCodeBase64(qrPayload);
     setQrDataUrl(url);
   };
 

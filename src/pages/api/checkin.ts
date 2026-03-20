@@ -134,50 +134,41 @@ export const POST: APIRoute = async (context) => {
 
     const { qrData, scannerDeviceId } = validation.data;
 
-    // Demo codes: canned responses for staff testing (never touch DB)
+    // Demo codes: canned responses for staff testing (never touch DB).
+    // Disabled in production to prevent forged check-ins.
     const normalized = qrData.replace(/\uFEFF/g, '').trim();
-    if (normalized === 'DEMO-SUCCESS') {
-      logCheckInAttempt({ ip, outcome: 'demo_success' });
-      return new Response(
-        JSON.stringify({
-          success: true,
-          event: { id: 'demo', name: 'Demo Event' },
-          attendee: {
-            id: 'demo-attendee',
-            firstName: 'Demo',
-            lastName: 'Guest',
-            email: 'demo@example.com',
-            checkedIn: true,
+    if (!import.meta.env.PROD) {
+      const demoResponses: Record<string, { body: object; status?: number }> = {
+        'DEMO-SUCCESS': {
+          body: {
+            success: true,
+            event: { id: 'demo', name: 'Demo Event' },
+            attendee: { id: 'demo-attendee', firstName: 'Demo', lastName: 'Guest', email: 'demo@example.com', checkedIn: true },
+            message: 'Demo Guest checked in successfully!',
           },
-          message: 'Demo Guest checked in successfully!',
-        }),
-        { headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-    if (normalized === 'DEMO-ALREADY') {
-      logCheckInAttempt({ ip, outcome: 'demo_already' });
-      return new Response(
-        JSON.stringify({
-          alreadyCheckedIn: true,
-          event: { id: 'demo', name: 'Demo Event' },
-          attendee: {
-            id: 'demo-attendee',
-            firstName: 'Demo',
-            lastName: 'Guest',
-            email: 'demo@example.com',
-            checkedIn: true,
+        },
+        'DEMO-ALREADY': {
+          body: {
+            alreadyCheckedIn: true,
+            event: { id: 'demo', name: 'Demo Event' },
+            attendee: { id: 'demo-attendee', firstName: 'Demo', lastName: 'Guest', email: 'demo@example.com', checkedIn: true },
+            message: 'Already checked in: Demo Guest',
           },
-          message: 'Already checked in: Demo Guest',
-        }),
-        { status: 409, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-    if (normalized === 'DEMO-INVALID') {
-      logCheckInAttempt({ ip, outcome: 'demo_invalid' });
-      return new Response(
-        JSON.stringify({ error: 'Invalid or expired QR code' }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
-      );
+          status: 409,
+        },
+        'DEMO-INVALID': {
+          body: { error: 'Invalid or expired QR code' },
+          status: 401,
+        },
+      };
+      const demo = demoResponses[normalized];
+      if (demo) {
+        logCheckInAttempt({ ip, outcome: `demo_${normalized.toLowerCase().replace('demo-', '')}` as any });
+        return new Response(JSON.stringify(demo.body), {
+          status: demo.status ?? 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     let eventId: string;

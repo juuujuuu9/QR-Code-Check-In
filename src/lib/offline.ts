@@ -2,22 +2,14 @@
  * Offline capability: cache guest list in IndexedDB; queue check-ins when offline; sync when online.
  */
 
+import type { OfflineCacheAttendee } from './db';
+import { isValidUUID } from './uuid';
+export type { OfflineCacheAttendee };
+
 const DB_NAME = 'qr-check-in-offline';
 const DB_VERSION = 1;
 const STORE_CACHE = 'cache';
 const STORE_QUEUE = 'queue';
-
-export type OfflineCacheAttendee = {
-  id: string;
-  eventId: string;
-  qrToken: string | null;
-  qrExpiresAt: string | null;
-  checkedIn: boolean;
-  firstName: string;
-  lastName: string;
-  email: string;
-  eventName?: string;
-};
 
 export type OfflineCacheData = {
   cachedAt: string;
@@ -149,12 +141,6 @@ function parseQR(qrData: string, defaultEventId: string): { eventId: string; ent
     return { eventId: defaultEventId, entryId: parts[0], token: parts[1] };
   }
   return null;
-}
-
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-function isValidUUID(s: string): boolean {
-  return UUID_REGEX.test(s);
 }
 
 export type OfflineCheckInResult =

@@ -1,11 +1,6 @@
 import { getDefaultEventId } from './db';
-
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function validateUUID(s: string): void {
-  if (!UUID_REGEX.test(s)) throw new Error('Invalid UUID');
-}
+import { assertUUID } from './uuid';
+export { isValidUUID } from './uuid';
 
 export interface QRPayload {
   eventId: string;
@@ -16,8 +11,8 @@ export interface QRPayload {
 
 /** Encode eventId, entryId, token into QR string (v2 format). */
 export function encodeQR(eventId: string, entryId: string, token: string): string {
-  validateUUID(eventId);
-  validateUUID(entryId);
+  assertUUID(eventId);
+  assertUUID(entryId);
   return `${eventId}:${entryId}:${token}`;
 }
 
@@ -31,15 +26,15 @@ export async function decodeQR(qrData: string): Promise<QRPayload> {
   if (parts.length === 3) {
     const [eventId, entryId, token] = parts;
     if (!eventId || !entryId || !token) throw new Error('Invalid QR format');
-    validateUUID(eventId);
-    validateUUID(entryId);
+    assertUUID(eventId);
+    assertUUID(entryId);
     return { eventId, entryId, token, format: 'v2' };
   }
 
   if (parts.length === 2) {
     const [entryId, token] = parts;
     if (!entryId || !token) throw new Error('Invalid QR format');
-    validateUUID(entryId);
+    assertUUID(entryId);
     console.warn('Legacy QR scanned:', entryId);
     const eventId = await getDefaultEventId();
     return { eventId, entryId, token, format: 'v1-legacy' };

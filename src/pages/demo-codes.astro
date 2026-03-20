@@ -1,15 +1,15 @@
 ---
 import ScannerLayout from '../layouts/ScannerLayout.astro';
-import QRCode from 'qrcode';
+import { generateQRCodeBase64 } from '../lib/qr-client';
 
 const DEMO_SUCCESS = 'DEMO-SUCCESS';
 const DEMO_ALREADY = 'DEMO-ALREADY';
 const DEMO_INVALID = 'DEMO-INVALID';
 
-const qrOptions = { width: 180, margin: 2, color: { dark: '#000000', light: '#ffffff' } };
-const successDataUrl = await QRCode.toDataURL(DEMO_SUCCESS, qrOptions);
-const alreadyDataUrl = await QRCode.toDataURL(DEMO_ALREADY, qrOptions);
-const invalidDataUrl = await QRCode.toDataURL(DEMO_INVALID, qrOptions);
+const demoQrOpts = { width: 180, margin: 2 };
+const successDataUrl = await generateQRCodeBase64(DEMO_SUCCESS, demoQrOpts);
+const alreadyDataUrl = await generateQRCodeBase64(DEMO_ALREADY, demoQrOpts);
+const invalidDataUrl = await generateQRCodeBase64(DEMO_INVALID, demoQrOpts);
 ---
 
 <ScannerLayout>

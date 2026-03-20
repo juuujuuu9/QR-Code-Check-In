@@ -2,7 +2,6 @@ import type { APIRoute } from 'astro';
 import { getAttendeeById, getEventById } from '../../../lib/db';
 import { sendQRCodeEmail } from '../../../lib/email';
 import { generateQRCodeBase64 } from '../../../lib/qr-client';
-import { QR_GENERATION } from '../../../config/qr';
 import { getOrCreateQRPayload } from '../../../lib/qr-token';
 import { requireEventManage } from '../../../lib/access';
 
@@ -71,12 +70,7 @@ export const POST: APIRoute = async (context) => {
           continue;
         }
 
-        const qrCodeBase64 = await generateQRCodeBase64(qrResult.qrPayload, {
-          width: QR_GENERATION.width,
-          margin: QR_GENERATION.margin,
-          errorCorrectionLevel: QR_GENERATION.errorCorrectionLevel,
-          color: QR_GENERATION.color,
-        });
+        const qrCodeBase64 = await generateQRCodeBase64(qrResult.qrPayload);
 
         const result = await sendQRCodeEmail(attendee, qrCodeBase64, {
           fromName,

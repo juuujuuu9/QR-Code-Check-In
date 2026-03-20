@@ -1,15 +1,10 @@
 import { randomBytes } from 'crypto';
 import { getAttendeeById, updateAttendeeQRToken, getDefaultEventId } from './db';
 import { encodeQR } from './qr';
+import { getEnv } from './env';
 
 // Event check-in QRs (including CSV import) must be valid until the event. 15 min broke imported/scanned QRs.
-// On Vercel, process.env is the runtime source of truth
-const TTL_DAYS =
-  Number(
-    (typeof process !== 'undefined' && process.env?.QR_TOKEN_TTL_DAYS) ||
-      (typeof import.meta !== 'undefined' && (import.meta.env?.QR_TOKEN_TTL_DAYS as string | undefined)) ||
-      7
-  ) || 7;
+const TTL_DAYS = Number(getEnv('QR_TOKEN_TTL_DAYS') || 7) || 7;
 const TOKEN_TTL_MS = TTL_DAYS * 24 * 60 * 60 * 1000;
 
 export function generateQRToken(): string {

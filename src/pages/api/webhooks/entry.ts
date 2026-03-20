@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro';
-import QRCode from 'qrcode';
 import { checkRateLimit, getClientIp } from '../../../lib/rate-limit';
-import { QR_GENERATION } from '../../../config/qr';
+import { generateQRCodeBase64 } from '../../../lib/qr-client';
 import {
   getEventBySlug,
   createAttendee,
@@ -11,16 +10,12 @@ import { encodeQR } from '../../../lib/qr';
 import { generateQRToken } from '../../../lib/qr-token';
 import { sendQRCodeEmail } from '../../../lib/email';
 import { updateAttendeeQRToken } from '../../../lib/db';
+import { getEnv } from '../../../lib/env';
 
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24h default for webhook-created QRs
 
 function getWebhookKey(): string {
-  // On Vercel, process.env is the runtime source of truth
-  return (
-    (typeof process !== 'undefined' && process.env?.MICROSITE_WEBHOOK_KEY) ||
-    (typeof import.meta !== 'undefined' && (import.meta.env?.MICROSITE_WEBHOOK_KEY as string)) ||
-    ''
-  );
+  return getEnv('MICROSITE_WEBHOOK_KEY') || '';
 }
 
 function parseName(name: string): { firstName: string; lastName: string } {
@@ -109,10 +104,7 @@ export const POST: APIRoute = async ({ request }) => {
         }
 
         // On Vercel, process.env is the runtime source of truth
-        const baseUrl =
-          (typeof process !== 'undefined' && process.env?.PUBLIC_APP_URL) ||
-          (typeof import.meta !== 'undefined' && (import.meta.env?.PUBLIC_APP_URL as string)) ||
-          '';
+        const baseUrl = getEnv('PUBLIC_APP_URL') || '';
         return new Response(
           JSON.stringify({
             entryId: existing.id,
@@ -145,11 +137,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     if (sendEmail && qrPayload) {
-      const dataUrl = await QRCode.toDataURL(qrPayload, {
-        width: QR_GENERATION.width,
-        margin: QR_GENERATION.margin,
-        errorCorrectionLevel: QR_GENERATION.errorCorrectionLevel,
-      });
+      const dataUrl = await generateQRCodeBase64(qrPayload);
       await sendQRCodeEmail(
         {
           firstName: attendee.firstName as string,
@@ -162,10 +150,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // On Vercel, process.env is the runtime source of truth
-    const baseUrl =
-      (typeof process !== 'undefined' && process.env?.PUBLIC_APP_URL) ||
-      (typeof import.meta !== 'undefined' && (import.meta.env?.PUBLIC_APP_URL as string)) ||
-      '';
+    const baseUrl = getEnv('PUBLIC_APP_URL') || '';
     return new Response(
       JSON.stringify({
         entryId: attendee.id,
