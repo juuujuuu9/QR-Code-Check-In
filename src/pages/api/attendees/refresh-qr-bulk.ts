@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
-import { getAttendeesByEventId } from '../../../lib/db';
+import { getAllAttendeesForUser } from '../../../lib/db';
 import { getOrCreateQRPayload } from '../../../lib/qr-token';
-import { requireEventManage } from '../../../lib/access';
+import { requireEventManage, requireUserId } from '../../../lib/access';
 
 /**
  * Bulk refresh QR tokens for an event.
@@ -9,6 +9,8 @@ import { requireEventManage } from '../../../lib/access';
  * This invalidates old QR screenshots but ensures all codes use latest generation settings.
  */
 export const POST: APIRoute = async (context) => {
+  const userId = requireUserId(context);
+  if (userId instanceof Response) return userId;
   try {
     const { request } = context;
     const { eventId, confirm } = ((await request.json()) || {}) as {
@@ -35,7 +37,7 @@ export const POST: APIRoute = async (context) => {
     if (manage instanceof Response) return manage;
 
     // Get attendees
-    const attendees = await getAttendeesByEventId(eventId);
+    const attendees = await getAllAttendeesForUser(userId, eventId);
 
     if (attendees.length === 0) {
       return new Response(

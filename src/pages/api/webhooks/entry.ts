@@ -96,7 +96,7 @@ export const POST: APIRoute = async ({ request }) => {
         if (generateQR && isExpired) {
           const newToken = generateQRToken();
           const expiresAt = new Date(Date.now() + TOKEN_TTL_MS);
-          await updateAttendeeQRToken(existing.id, newToken, expiresAt, event.id);
+          await updateAttendeeQRToken(existing.id, newToken, expiresAt);
           qrPayload = encodeQR(event.id, existing.id, newToken);
           refreshed = true;
         } else if (existing.qr_token && existing.qr_expires_at && new Date(existing.qr_expires_at) > new Date()) {
@@ -132,7 +132,7 @@ export const POST: APIRoute = async ({ request }) => {
     if (generateQR) {
       const token = generateQRToken();
       const expiresAt = new Date(Date.now() + TOKEN_TTL_MS);
-      await updateAttendeeQRToken(attendee.id, token, expiresAt, event.id);
+      await updateAttendeeQRToken(attendee.id, token, expiresAt);
       qrPayload = encodeQR(event.id, attendee.id, token);
     }
 

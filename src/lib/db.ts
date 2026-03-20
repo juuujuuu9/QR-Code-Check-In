@@ -317,12 +317,6 @@ export async function getAllEventsForUser(userId: string): Promise<EventRow[]> {
   return rows.map((row) => rowToEvent(row as Record<string, unknown>));
 }
 
-export async function getAllEvents(): Promise<EventRow[]> {
-  const db = getDb();
-  const rows = await db`SELECT * FROM events ORDER BY created_at DESC`;
-  return rows.map((row) => rowToEvent(row as Record<string, unknown>));
-}
-
 export async function getDefaultEventId(): Promise<string> {
   const now = Date.now();
   if (defaultEventIdCache && defaultEventIdCache.expiresAt > now) {
@@ -333,20 +327,6 @@ export async function getDefaultEventId(): Promise<string> {
   if (!event) throw new Error('Default event not found. Run npm run migrate-events.');
   defaultEventIdCache = { id: event.id, expiresAt: now + DEFAULT_EVENT_CACHE_TTL_MS };
   return event.id;
-}
-
-export async function getAllAttendees(eventId?: string) {
-  const db = getDb();
-  if (eventId) {
-    const rows = await db`
-      SELECT * FROM attendees
-      WHERE event_id = ${eventId}
-      ORDER BY created_at DESC NULLS LAST, rsvp_at DESC
-    `;
-    return rows.map((row) => rowToAttendee(row as Record<string, unknown>));
-  }
-  const rows = await db`SELECT * FROM attendees ORDER BY rsvp_at DESC`;
-  return rows.map((row) => rowToAttendee(row as Record<string, unknown>));
 }
 
 export async function getAllAttendeesForUser(userId: string, eventId?: string) {
@@ -374,10 +354,6 @@ export async function getAllAttendeesForUser(userId: string, eventId?: string) {
   return rows.map((row) => rowToAttendee(row as Record<string, unknown>));
 }
 
-export async function getAttendeesByEventId(eventId: string) {
-  return getAllAttendees(eventId);
-}
-
 /** Minimal attendee data including qr_token for offline cache. Staff-only. */
 export type OfflineCacheAttendee = {
   id: string;
@@ -403,29 +379,6 @@ function rowToOffline(row: Record<string, unknown>): OfflineCacheAttendee {
     email: (row.email ?? '') as string,
     eventName: row.event_name as string | undefined,
   };
-}
-
-export async function getAttendeesForOfflineCache(eventId?: string): Promise<OfflineCacheAttendee[]> {
-  const db = getDb();
-  if (eventId) {
-    const rows = await db`
-      SELECT a.id, a.event_id, a.qr_token, a.qr_expires_at, a.checked_in,
-             a.first_name, a.last_name, a.email, e.name as event_name
-      FROM attendees a
-      LEFT JOIN events e ON e.id = a.event_id
-      WHERE a.event_id = ${eventId}
-      ORDER BY a.created_at DESC NULLS LAST, a.rsvp_at DESC
-    `;
-    return rows.map((row) => rowToOffline(row as Record<string, unknown>));
-  }
-  const rows = await db`
-    SELECT a.id, a.event_id, a.qr_token, a.qr_expires_at, a.checked_in,
-           a.first_name, a.last_name, a.email, e.name as event_name
-    FROM attendees a
-    LEFT JOIN events e ON e.id = a.event_id
-    ORDER BY a.created_at DESC NULLS LAST, a.rsvp_at DESC
-  `;
-  return rows.map((row) => rowToOffline(row as Record<string, unknown>));
 }
 
 export async function getAttendeesForOfflineCacheForUser(
@@ -456,34 +409,6 @@ export async function getAttendeesForOfflineCacheForUser(
     ORDER BY a.created_at DESC NULLS LAST, a.rsvp_at DESC
   `;
   return rows.map((row) => rowToOffline(row as Record<string, unknown>));
-}
-
-/** Search attendees by name or email. Optionally scope by eventId. Joins event name for display. */
-export async function searchAttendees(eventId?: string, q?: string) {
-  if (!q?.trim()) return getAllAttendees(eventId);
-  const db = getDb();
-  const pattern = `%${String(q).trim().slice(0, 200)}%`;
-  const rowToAttendeeWithEvent = (row: Record<string, unknown>) => ({
-    ...rowToAttendee(row),
-    eventName: row.event_name as string | undefined,
-  });
-  if (eventId) {
-    const rows = await db`
-      SELECT a.*, e.name as event_name FROM attendees a
-      LEFT JOIN events e ON e.id = a.event_id
-      WHERE a.event_id = ${eventId}
-        AND (a.first_name ILIKE ${pattern} OR a.last_name ILIKE ${pattern} OR a.email ILIKE ${pattern})
-      ORDER BY a.created_at DESC NULLS LAST, a.rsvp_at DESC
-    `;
-    return rows.map((row) => rowToAttendeeWithEvent(row as Record<string, unknown>));
-  }
-  const rows = await db`
-    SELECT a.*, e.name as event_name FROM attendees a
-    LEFT JOIN events e ON e.id = a.event_id
-    WHERE a.first_name ILIKE ${pattern} OR a.last_name ILIKE ${pattern} OR a.email ILIKE ${pattern}
-    ORDER BY a.created_at DESC NULLS LAST, a.rsvp_at DESC
-  `;
-  return rows.map((row) => rowToAttendeeWithEvent(row as Record<string, unknown>));
 }
 
 export async function searchAttendeesForUser(userId: string, eventId?: string, q?: string) {
@@ -536,12 +461,6 @@ export async function getAttendeeByIdForUser(id: string, userId: string) {
     WHERE a.id = ${id} AND m.user_id = ${userId}
     LIMIT 1
   `;
-  return rows.length ? rowToAttendee(rows[0] as Record<string, unknown>) : null;
-}
-
-export async function getAttendeeByEmail(email: string) {
-  const db = getDb();
-  const rows = await db`SELECT * FROM attendees WHERE email = ${email}`;
   return rows.length ? rowToAttendee(rows[0] as Record<string, unknown>) : null;
 }
 
@@ -666,16 +585,6 @@ export async function createAttendee(
   return rowToAttendee(rows[0] as Record<string, unknown>);
 }
 
-export async function checkInAttendee(id: string) {
-  const db = getDb();
-  const rows = await db`
-    UPDATE attendees SET checked_in = true, checked_in_at = NOW() WHERE id = ${id}
-    RETURNING *
-  `;
-  if (!rows.length) throw new Error('Attendee not found');
-  return rowToAttendee(rows[0] as Record<string, unknown>);
-}
-
 /** Atomic manual check-in that only succeeds if attendee is not already checked in. */
 export async function checkInAttendeeIfNotCheckedIn(id: string) {
   const db = getDb();
@@ -684,18 +593,6 @@ export async function checkInAttendeeIfNotCheckedIn(id: string) {
     SET checked_in = true, checked_in_at = NOW()
     WHERE id = ${id} AND checked_in = false
     RETURNING *
-  `;
-  return rows.length ? rowToAttendee(rows[0] as Record<string, unknown>) : null;
-}
-
-export async function findAttendeeByToken(id: string, token: string) {
-  const db = getDb();
-  const rows = await db`
-    SELECT * FROM attendees
-    WHERE id = ${id}
-      AND qr_token = ${token}
-      AND qr_expires_at > NOW()
-      AND qr_used_at IS NULL
   `;
   return rows.length ? rowToAttendee(rows[0] as Record<string, unknown>) : null;
 }
@@ -716,27 +613,6 @@ export async function findAttendeeByEventAndToken(
       AND qr_used_at IS NULL
   `;
   return rows.length ? rowToAttendee(rows[0] as Record<string, unknown>) : null;
-}
-
-export async function checkInAttendeeWithToken(
-  id: string,
-  token: string,
-  scannerDeviceId: string | null
-) {
-  const db = getDb();
-  const rows = await db`
-    UPDATE attendees
-    SET qr_used_at = NOW(),
-        qr_used_by_device = ${scannerDeviceId},
-        qr_token = NULL,
-        qr_expires_at = NULL,
-        checked_in = true,
-        checked_in_at = NOW()
-    WHERE id = ${id} AND qr_token = ${token}
-    RETURNING *
-  `;
-  if (!rows.length) throw new Error('Attendee not found');
-  return rowToAttendee(rows[0] as Record<string, unknown>);
 }
 
 /** Event-scoped atomic check-in (v2 QR format). */
@@ -777,7 +653,6 @@ export async function updateAttendeeQRToken(
   id: string,
   token: string,
   expiresAt: Date,
-  _eventId?: string
 ) {
   const db = getDb();
   await db`

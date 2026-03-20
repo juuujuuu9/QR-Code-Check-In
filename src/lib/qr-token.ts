@@ -21,7 +21,7 @@ export async function getOrCreateQRPayload(
   const resolvedEventId = eventId ?? (attendee.eventId as string | undefined) ?? (await getDefaultEventId());
   const token = generateQRToken();
   const expiresAt = new Date(Date.now() + TOKEN_TTL_MS);
-  await updateAttendeeQRToken(attendeeId, token, expiresAt, resolvedEventId);
+  await updateAttendeeQRToken(attendeeId, token, expiresAt);
 
   const qrPayload = encodeQR(resolvedEventId, attendeeId, token);
   return { qrPayload, expiresAt };
