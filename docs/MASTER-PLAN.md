@@ -2,7 +2,7 @@
 
 **Purpose:** Single source of truth for development progress. Use as the dev checklist; update when completing work; reference from other docs. Feeds into later documentation.
 
-**Last updated:** 2026-03-20 (`users` table for global display name; `/onboarding/profile` gate; names removed from `organization_memberships` — run `docs/sql/003-users-profile.sql`)
+**Last updated:** 2026-03-21 ([INTEGRATIONS-STRATEGY.md](INTEGRATIONS-STRATEGY.md) added; CSV-first + API / Zapier–Make parity documented)
 
 ---
 
@@ -53,7 +53,7 @@
 | Production deployment docs | **Done** | VERCEL-DEPLOYMENT.md with step-by-step guide. |
 | Offline capability | **Done** | IndexedDB cache, offline queue, sync on reconnect; 409 = success. `src/lib/offline.ts`, `api/attendees/offline-cache`. |
 | Offline sync resilience (backoff/idempotency/queue visibility) | **Done** | Added queue dedupe, retry-with-backoff sync, and scanner-visible queue count. |
-| Multi-event / central hub | **Done** | Events table, event-scoped attendees; microsite sync = CSV import (primary); webhook optional. |
+| Multi-event / central hub | **Done** | Events table, event-scoped attendees; guestlist ingestion: **CSV primary** for most users; `POST /api/webhooks/entry` for automation; Zapier/Make first-class TBD — see [INTEGRATIONS-STRATEGY.md](INTEGRATIONS-STRATEGY.md). |
 | Event-scoped scanner/manual override hardening | Partial | Event scoping exists broadly; scanner entry path/manual UX still needs stricter guardrails. |
 | Persistent event selection | **Done** | staff_preferences table; last_selected_event_id survives logout/login, works across devices. |
 | Attendance export with operational presets | Partial | Export with timestamps exists; dedicated checked-in/no-show presets pending. |
@@ -120,6 +120,7 @@ Follow this order; check off and date as you complete each item.
 ### 10. Optional (later)
 
 - [x] Protect admin API routes (attendees, send-email, checkin, refresh-qr) with session check — done in middleware.
+- [ ] **Integrations — Zapier / Make (first-class):** Published connector(s) or maintained recipes with **parity** to the HTTP guestlist API for LC/NC users; same strategic weight as API improvements. Strategy: [INTEGRATIONS-STRATEGY.md](INTEGRATIONS-STRATEGY.md).
 - [ ] Capacity widget and/or no-show analytics.
 - [ ] Add to Wallet, group check-in — if needed.
 
@@ -232,6 +233,7 @@ Deferred / lower priority:
 |-----|--------|
 | [STEP-1-QR-SECURITY-PLAN.md](STEP-1-QR-SECURITY-PLAN.md) | Item 1: UUID, token-only QR, rate limit, audit, migration. |
 | [STEP-2-CENTRAL-HUB.md](STEP-2-CENTRAL-HUB.md) | Item 3: Central hub, events, CSV import (primary), webhook optional. |
+| [INTEGRATIONS-STRATEGY.md](INTEGRATIONS-STRATEGY.md) | Guestlist integrations: CSV-first for typical users; API + Zapier/Make as equal-weight automation paths; security/scalability notes. |
 | [FORM-MICROSITE-SETUP.md](FORM-MICROSITE-SETUP.md) | Linking a form microsite to the hub; copying Cursor rule into new projects. |
 | [form-microsite-hub-integration.mdc](form-microsite-hub-integration.mdc) | Portable Cursor rule: copy to new microsite’s `.cursor/rules/` for hub integration context. |
 | [EMAIL-SENDER-GO-LIVE-CHECKLIST.md](EMAIL-SENDER-GO-LIVE-CHECKLIST.md) | Production sender cutover checklist (Resend domain verify, `FROM_EMAIL=noreply@...`, modal preview + smoke test). |

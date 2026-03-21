@@ -32,6 +32,13 @@ This folder contains user-facing documentation for the QR Check-In system.
 
 **For the registration table:** Keep a printed [FAQ.md](./FAQ.md) handy for attendee questions.
 
+## Strategy & Context
+
+| Document | Purpose |
+|----------|---------|
+| [PRODUCT-STRATEGY.md](./PRODUCT-STRATEGY.md) | Competitive positioning, pricing tiers, AI features, credibility plan |
+| [FOUNDER-CONTEXT.md](./FOUNDER-CONTEXT.md) | Origin story, agency niche insights, scanner gun replacement narrative |
+
 ## Contributing
 
 When updating code, update the relevant documentation:
